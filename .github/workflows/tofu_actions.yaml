@@ -30,11 +30,10 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup Terraform
-      uses: opentofu/setup-opentofu@v1
+    - name: OpenTofu - Setup Tofu
+      uses: opentofu/setup-opentofu@v1.0.5
       with:
         tofu_version: 1.9.1
-        tofu_wrapper: false
 
     - name: OpenTofu fmt
       id: fmt
