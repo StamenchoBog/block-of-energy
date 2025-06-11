@@ -1,0 +1,122 @@
+name: OpenTofu Actions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  opentofu:
+    name: OpenTofu Actions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write  # Required for OIDC
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_USE_OIDC: true
+      tf_resource_group_name: "block-of-energy"
+      tf_storage_account_name: "tfstate8128650821"
+      tf_state_container: "tfstate"
+      tf_state_key: "terraform.tfstate"
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_version: 1.9.1
+        tofu_wrapper: false
+
+    - name: OpenTofu fmt
+      id: fmt
+      run: tofu fmt -check
+      continue-on-error: true
+      working-directory: ./infra
+
+    - name: OpenTofu Init
+      id: init
+      run: tofu init
+      working-directory: ./infra
+
+    - name: OpenTofu Validate
+      id: validate
+      run: tofu validate -no-color
+      working-directory: ./infra
+
+    - name: OpenTofu Plan
+      id: plan
+      run: tofu plan -no-color
+      continue-on-error: true
+      working-directory: ./infra
+
+    - uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      env:
+        PLAN: "tofu\n${{ steps.plan.outputs.stdout }}"
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          // 1. Retrieve existing bot comments for the PR
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          })
+          const botComment = comments.find(comment => {
+            return comment.user.type === 'Bot' && comment.body.includes('OpenTofu Format and Style')
+          })
+
+          // 2. Prepare format of the comment
+          const output = `#### OpenTofu Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+          #### OpenTofu Initialization ⚙️\`${{ steps.init.outcome }}\`
+          #### OpenTofu Validation 🤖\`${{ steps.validate.outcome }}\`
+          <details><summary>Validation Output</summary>
+
+          \`\`\`\n
+          ${{ steps.validate.outputs.stdout }}
+          \`\`\`
+
+          </details>
+
+          #### OpenTofu Plan 📖\`${{ steps.plan.outcome }}\`
+
+          <details><summary>Show Plan</summary>
+
+          \`\`\`\n
+          ${process.env.PLAN}
+          \`\`\`
+
+          </details>
+
+          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+          // 3. If we have a comment, update it, otherwise create a new one
+          if (botComment) {
+            github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: output
+            })
+          } else {
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+          }
+
+    - name: Tofu Apply
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      run: tofu apply -auto-approve -input=false
+      working-directory: .
