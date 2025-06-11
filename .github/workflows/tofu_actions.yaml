@@ -119,4 +119,4 @@ jobs:
     - name: Tofu Apply
       if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       run: tofu apply -auto-approve -input=false
-      working-directory: .
+      working-directory: ./infra
