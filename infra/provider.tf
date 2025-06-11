@@ -12,7 +12,6 @@ terraform {
     container_name       = "tfstate"
     key                  = "tfstate-data"
     use_oidc             = true
-    use_azuread_auth     = true
   }
 }
 
