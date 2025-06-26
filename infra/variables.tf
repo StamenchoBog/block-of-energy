@@ -2,7 +2,8 @@ variable "networking" {
   type = any
   default = {
     vnet = {
-
+      name          = "private-vnet"
+      address_space = ["10.0.0.0/16"]
     }
     subnets = [
       {
