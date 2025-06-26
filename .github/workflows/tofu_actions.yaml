@@ -1,3 +1,4 @@
+---
 name: OpenTofu Actions
 
 on:
@@ -54,7 +55,7 @@ jobs:
 
     - name: OpenTofu Plan
       id: plan
-      run: tofu plan -no-color
+      run: tofu plan
       continue-on-error: true
       working-directory: ./infra
 
