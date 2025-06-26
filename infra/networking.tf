@@ -7,7 +7,7 @@ resource "azurerm_virtual_network" "vnet" {
 
 resource "azurerm_subnet" "aks_subnet" {
   for_each = {
-    for p in var.networking.subnets[*] : p.name => p if p.create
+    for p in var.networking.subnets : p.name => p if p.create
   }
 
   name                 = each.value.name
@@ -15,16 +15,16 @@ resource "azurerm_subnet" "aks_subnet" {
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = each.value.address_prefixes
 
-  # dynamic "delegation" {
-  #   for_each = each.value.delegation[*]
+  dynamic "delegation" {
+    for_each = each.value.delegation[*]
 
-  #   content {
-  #     name = delegation.value.name
+    content {
+      name = delegation.value.name
 
-  #     service_delegation {
-  #       name    = delegation.value.service_delegation.name
-  #       actions = delegation.value.service_delegation.actions
-  #     }
-  #   }
-  # }
+      service_delegation {
+        name    = delegation.value.service_delegation.name
+        actions = delegation.value.service_delegation.actions
+      }
+    }
+  }
 }
