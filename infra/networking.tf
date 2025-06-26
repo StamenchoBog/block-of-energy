@@ -5,7 +5,7 @@ resource "azurerm_virtual_network" "vnet" {
   address_space       = var.networking.vnet.address_space
 }
 
-resource "azurerm_subnet" "aks_subnet" {
+resource "azurerm_subnet" "subnet" {
   for_each = {
     for p in var.networking.subnets : p.name => p if p.create
   }
