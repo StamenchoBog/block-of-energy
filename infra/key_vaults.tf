@@ -1,11 +1,11 @@
 resource "azurerm_key_vault" "kv_general" {
-  name = "kv-general"
-  location = data.azurerm_resource_group.block_of_energy_rg.location
-  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+  name                        = "kv-general"
+  location                    = data.azurerm_resource_group.block_of_energy_rg.location
+  resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
   enabled_for_disk_encryption = true
-  tenant_id = data.azurerm_client_config.current.tenant_id
-  soft_delete_retention_days = 30
-  purge_protection_enabled = true
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+  soft_delete_retention_days  = 30
+  purge_protection_enabled    = true
 
   sku_name = "standard"
 }
@@ -26,8 +26,8 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy" {
 
 resource "azurerm_key_vault" "kv_blockchain" {
   name                        = "kv-blockchain"
-  location = data.azurerm_resource_group.block_of_energy_rg.location
-  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+  location                    = data.azurerm_resource_group.block_of_energy_rg.location
+  resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
   enabled_for_disk_encryption = true
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   soft_delete_retention_days  = 90
