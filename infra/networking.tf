@@ -16,7 +16,7 @@ resource "azurerm_subnet" "aks_subnet" {
   address_prefixes     = each.value.address_prefixes
 
   dynamic "delegation" {
-    for_each = each.value.delegation[*]
+    for_each = each.value.delegation != null ? each.value.delegation : []
 
     content {
       name = delegation.value.name
