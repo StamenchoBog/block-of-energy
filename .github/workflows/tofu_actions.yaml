@@ -3,9 +3,13 @@ name: OpenTofu Actions
 
 on:
   push:
+    paths:
+      - infra/**
     branches:
       - main
   pull_request:
+    paths:
+      - infra/**
     branches:
       - main
   workflow_dispatch:
