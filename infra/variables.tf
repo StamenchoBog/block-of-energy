@@ -1,6 +1,6 @@
 variable "prefix" {
   type    = string
-  default = "block-of-energy"
+  default = "bk-of-energy"
 }
 
 variable "networking" {
@@ -28,7 +28,7 @@ variable "networking" {
             name = "functions-delegation"
             service_delegation = {
               name    = "Microsoft.Web/serverFarms"
-              actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+              actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
             }
           }
         ]

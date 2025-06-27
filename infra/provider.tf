@@ -16,6 +16,7 @@ terraform {
 }
 
 provider "azurerm" {
+  subscription_id = "9b6d6abe-6e6f-46b4-ba07-f92d066f88ab" # Azure fot Students
   features {
     key_vault {
       purge_soft_delete_on_destroy    = true
