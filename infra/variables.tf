@@ -1,3 +1,8 @@
+variable "prefix" {
+  type    = string
+  default = "block-of-energy"
+}
+
 variable "networking" {
   type = any
   default = {
