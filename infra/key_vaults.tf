@@ -1,5 +1,5 @@
 resource "azurerm_key_vault" "kv_general" {
-  name                        = "kv-general"
+  name                        = "${var.prefix}-kv-general"
   location                    = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
   enabled_for_disk_encryption = true
@@ -25,7 +25,7 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy" {
 }
 
 resource "azurerm_key_vault" "kv_blockchain" {
-  name                        = "kv-blockchain"
+  name                        = "${var.prefix}-kv-general"
   location                    = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
   enabled_for_disk_encryption = true
