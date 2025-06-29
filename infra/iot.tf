@@ -22,7 +22,7 @@ resource "azurerm_iothub" "iot_hub" {
 resource "azurerm_iothub_shared_access_policy" "iot_hub_access_policy" {
   name                = "${var.prefix}-iot-hub-access-policy"
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
-  iothub_name         = azurerm_iothub.iot_hub.location
+  iothub_name         = azurerm_iothub.iot_hub.name
 
   registry_read  = true
   registry_write = true
