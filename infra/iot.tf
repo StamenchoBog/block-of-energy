@@ -41,7 +41,6 @@ resource "azurerm_iothub_dps" "iot_hub_dps" {
   }
 
   linked_hub {
-    hostname                = azurerm_iothub.iot_hub.hostname
     connection_string       = azurerm_iothub_shared_access_policy.iot_hub_access_policy.primary_connection_string
     location                = azurerm_iothub.iot_hub.location
     allocation_weight       = 150
