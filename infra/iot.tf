@@ -25,8 +25,9 @@ resource "azurerm_iothub_shared_access_policy" "iot_hub_access_policy" {
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
   iothub_name         = azurerm_iothub.iot_hub.name
 
-  registry_read  = true
-  registry_write = true
+  registry_read   = true
+  registry_write  = true
+  service_connect = true
 }
 
 resource "azurerm_iothub_dps" "iot_hub_dps" {
