@@ -4,6 +4,7 @@ resource "azurerm_iothub" "iot_hub" {
   location                     = data.azurerm_resource_group.block_of_energy_rg.location
   local_authentication_enabled = false
   event_hub_partition_count    = 2
+  min_tls_version              = "1.2"
 
   sku {
     name     = "F1"
@@ -40,8 +41,11 @@ resource "azurerm_iothub_dps" "iot_hub_dps" {
   }
 
   linked_hub {
-    connection_string = azurerm_iothub_shared_access_policy.iot_hub_access_policy.primary_connection_string
-    location          = azurerm_iothub.iot_hub.location
+    hostname                = azurerm_iothub.iot_hub.hostname
+    connection_string       = azurerm_iothub_shared_access_policy.iot_hub_access_policy.primary_connection_string
+    location                = azurerm_iothub.iot_hub.location
+    allocation_weight       = 150
+    apply_allocation_policy = true
   }
 }
 
