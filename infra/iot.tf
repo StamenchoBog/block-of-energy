@@ -3,6 +3,7 @@ resource "azurerm_iothub" "iot_hub" {
   resource_group_name          = data.azurerm_resource_group.block_of_energy_rg.name
   location                     = data.azurerm_resource_group.block_of_energy_rg.location
   local_authentication_enabled = false
+  event_hub_partition_count    = 2
 
   sku {
     name     = "F1"
