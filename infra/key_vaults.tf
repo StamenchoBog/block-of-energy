@@ -16,15 +16,18 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy" {
   object_id    = data.azurerm_client_config.current.object_id
 
   certificate_permissions = [
-    "Get"
+    "Get",
+    "Create",
+    "Update",
+    "Delete"
   ]
 
   key_permissions = [
-    "Get",
+    "Get"
   ]
 
   secret_permissions = [
-    "Get",
+    "Get"
   ]
 }
 
