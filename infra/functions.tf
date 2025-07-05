@@ -3,7 +3,7 @@ resource "azurerm_service_plan" "functions" {
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
   location            = data.azurerm_resource_group.block_of_energy_rg.location
   os_type             = "Linux"
-  sku_name            = "Y1"
+  sku_name            = "B1"
 }
 
 resource "azurerm_linux_function_app" "data_modifier" {

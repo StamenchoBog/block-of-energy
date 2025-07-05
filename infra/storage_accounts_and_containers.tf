@@ -1,10 +1,11 @@
 resource "azurerm_storage_account" "queue_storage_acc" {
-  name                     = "${var.prefix_without_hyphens}queueacc"
-  resource_group_name      = data.azurerm_resource_group.block_of_energy_rg.name
-  location                 = data.azurerm_resource_group.block_of_energy_rg.location
-  account_tier             = "Standard"
-  account_kind             = "StorageV2"
-  account_replication_type = "LRS"
+  name                            = "${var.prefix_without_hyphens}queueacc"
+  resource_group_name             = data.azurerm_resource_group.block_of_energy_rg.name
+  location                        = data.azurerm_resource_group.block_of_energy_rg.location
+  allow_nested_items_to_be_public = false
+  account_tier                    = "Standard"
+  account_kind                    = "StorageV2"
+  account_replication_type        = "LRS"
 }
 
 resource "azurerm_storage_account" "data_storage_acc" {
@@ -22,6 +23,7 @@ resource "azurerm_storage_account" "compute_storage_acc" {
   resource_group_name      = data.azurerm_resource_group.block_of_energy_rg.name
   location                 = data.azurerm_resource_group.block_of_energy_rg.location
   account_tier             = "Standard"
+  account_kind             = "StorageV2"
   account_replication_type = "LRS"
 }
 
