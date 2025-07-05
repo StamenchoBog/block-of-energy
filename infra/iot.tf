@@ -7,7 +7,7 @@ resource "azurerm_iothub" "iot_hub" {
   min_tls_version              = "1.2"
 
   sku {
-    name     = "B1"
+    name     = "S1"
     capacity = "1"
   }
 
