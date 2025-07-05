@@ -7,7 +7,7 @@ resource "azurerm_iothub" "iot_hub" {
   min_tls_version              = "1.2"
 
   sku {
-    name     = "S1"
+    name     = "F1"
     capacity = "1"
   }
 
@@ -42,8 +42,8 @@ resource "azurerm_iothub_dps" "iot_hub_dps" {
   linked_hub {
     connection_string       = azurerm_iothub_shared_access_policy.iot_hub_access_policy.primary_connection_string
     location                = azurerm_iothub.iot_hub.location
-    allocation_weight       = 150
-    apply_allocation_policy = true
+    allocation_weight       = 0
+    apply_allocation_policy = false
   }
 
   depends_on = [
