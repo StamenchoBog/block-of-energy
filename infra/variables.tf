@@ -1,6 +1,11 @@
-variable "user_tenant_id" {
+variable "group_tenant_id" {
   type    = string
   default = "f0cac47b-e2b3-4e1b-a52f-487d2d996288"
+}
+
+variable "user_object_id" {
+  type    = string
+  default = "de3adcaa-55ea-46fe-ac8d-6984f655fabd"
 }
 
 variable "prefix" {

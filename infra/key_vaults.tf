@@ -45,8 +45,8 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
 
 resource "azurerm_key_vault_access_policy" "kv_general_access_policy_2" {
   key_vault_id = azurerm_key_vault.kv_general.id
-  tenant_id    = var.user_tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
+  tenant_id    = var.group_tenant_id
+  object_id    = var.user_object_id
 
   storage_permissions = [
     "Get",
