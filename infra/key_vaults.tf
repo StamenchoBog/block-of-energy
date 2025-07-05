@@ -10,13 +10,54 @@ resource "azurerm_key_vault" "kv_general" {
   sku_name = "standard"
 }
 
-resource "azurerm_key_vault_access_policy" "kv_general_access_policy" {
+resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
   key_vault_id = azurerm_key_vault.kv_general.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
   object_id    = data.azurerm_client_config.current.object_id
 
   storage_permissions = [
     "Get"
+  ]
+
+  certificate_permissions = [
+    "Get",
+    "List",
+    "Create",
+    "Update",
+    "Delete"
+  ]
+
+  key_permissions = [
+    "Get",
+    "List",
+    "Create",
+    "Update",
+    "Delete"
+  ]
+
+  secret_permissions = [
+    "Get",
+    "List",
+    "Set",
+    "Delete"
+  ]
+}
+
+resource "azurerm_key_vault_access_policy" "kv_general_access_policy_2" {
+  key_vault_id = azurerm_key_vault.kv_general.id
+  tenant_id    = var.user_tenant_id
+  object_id    = data.azurerm_client_config.current.object_id
+
+  storage_permissions = [
+    "Get",
+    "GetSAS",
+    "GetSAS",
+    "List",
+    "ListSAS",
+    "SetSAS",
+    "Update",
+    "Delete",
+    "Restore",
   ]
 
   certificate_permissions = [

@@ -1,6 +1,16 @@
+variable "user_tenant_id" {
+  type    = string
+  default = "f0cac47b-e2b3-4e1b-a52f-487d2d996288"
+}
+
 variable "prefix" {
   type    = string
   default = "bk-of-energy"
+}
+
+variable "prefix_without_hyphens" {
+  type    = string
+  default = "bkofenergy"
 }
 
 variable "networking" {
