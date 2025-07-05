@@ -8,6 +8,14 @@ resource "azurerm_key_vault" "kv_general" {
   purge_protection_enabled    = true
 
   sku_name = "standard"
+
+  network_acls {
+    default_action = "Deny"
+    bypass         = "AzureServices"
+    virtual_network_subnet_ids = [
+      azurerm_subnet.subnet["snet-functions"].id
+    ]
+  }
 }
 
 resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
@@ -81,6 +89,16 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy_2" {
     "List",
     "Set",
     "Delete"
+  ]
+}
+
+resource "azurerm_key_vault_access_policy" "function_access" {
+  key_vault_id = azurerm_key_vault.kv_general.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = azurerm_linux_function_app.data_modifier.identity[0].principal_id
+
+  secret_permissions = [
+    "Get"
   ]
 }
 

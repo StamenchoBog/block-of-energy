@@ -17,5 +17,13 @@ resource "azurerm_storage_account" "data_storage_acc" {
   access_tier              = "Cold"
 }
 
+resource "azurerm_storage_account" "compute_storage_acc" {
+  name                     = "${var.prefix_without_hyphens}computeacc"
+  resource_group_name      = data.azurerm_resource_group.block_of_energy_rg.name
+  location                 = data.azurerm_resource_group.block_of_energy_rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
 # TODO: Add storage container for `data_storage_acc` for data lake cold storage
 

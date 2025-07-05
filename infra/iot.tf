@@ -32,18 +32,3 @@ data "azurerm_iothub_dps" "iot_hub_dps" {
   name                = "bk-of-energy-iot-hub-dps"
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
 }
-
-resource "azurerm_iothub_dps_shared_access_policy" "example" {
-  name                = "${var.prefix}-iot-hub-dps-access-policy"
-  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
-  iothub_dps_name     = data.azurerm_iothub_dps.iot_hub_dps.name
-
-  enrollment_write = true
-  enrollment_read  = true
-
-  depends_on = [
-    azurerm_iothub.iot_hub,
-    azurerm_iothub_shared_access_policy.iot_hub_access_policy
-  ]
-}
-
