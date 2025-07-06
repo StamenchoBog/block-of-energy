@@ -11,7 +11,7 @@ resource "azurerm_key_vault" "kv_general" {
 
   network_acls {
     default_action = "Allow"
-    # bypass         = "AzureServices"
+    bypass         = "AzureServices"
     # virtual_network_subnet_ids = [
     #   azurerm_subnet.subnet["snet-functions"].id
     # ]
