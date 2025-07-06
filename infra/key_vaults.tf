@@ -18,10 +18,14 @@ resource "azurerm_key_vault" "kv_general" {
   }
 }
 
+data "azuread_service_principal" "github_oidc" {
+  display_name = "terraform-github-oidc"
+}
+
 resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
   key_vault_id = azurerm_key_vault.kv_general.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
+  object_id    = data.azuread_service_principal.github_oidc.object_id
 
   storage_permissions = [
     "Get"
