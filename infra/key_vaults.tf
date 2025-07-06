@@ -32,7 +32,8 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
     "List",
     "Create",
     "Update",
-    "Delete"
+    "Delete",
+    "Import"
   ]
 
   key_permissions = [
