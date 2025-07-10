@@ -13,41 +13,27 @@ resource "azurerm_key_vault" "kv_general" {
     default_action = "Allow"
     bypass         = "AzureServices"
     # virtual_network_subnet_ids = [
-    #   azurerm_subnet.subnet["snet-functions"].id
+    # azurerm_subnet.subnet["snet-functions"].id
     # ]
   }
 }
 
-data "azuread_service_principal" "github_oidc" {
-  display_name = "terraform-github-oidc"
+data "azuread_service_principal" "tofu_github_oidc" {
+  display_name = "tofu-github-oidc"
 }
 
-resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
+resource "azurerm_key_vault_access_policy" "kv_general_access_policy" {
   key_vault_id = azurerm_key_vault.kv_general.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azuread_service_principal.github_oidc.object_id
-
-  storage_permissions = [
-    "Get"
-  ]
+  object_id    = data.azuread_service_principal.tofu_github_oidc.object_id
 
   certificate_permissions = [
     "Get",
     "List",
     "Create",
-    "Update",
-    "Delete",
     "Import"
   ]
 
-  key_permissions = [
-    "Get",
-    "List",
-    "Create",
-    "Update",
-    "Delete"
-  ]
-
   secret_permissions = [
     "Get",
     "List",
@@ -56,76 +42,25 @@ resource "azurerm_key_vault_access_policy" "kv_general_access_policy_1" {
   ]
 }
 
-resource "azurerm_key_vault_access_policy" "kv_general_access_policy_2" {
-  key_vault_id = azurerm_key_vault.kv_general.id
-  tenant_id    = var.group_tenant_id
-  object_id    = var.user_object_id
-
-  storage_permissions = [
-    "Get",
-    "GetSAS",
-    "GetSAS",
-    "List",
-    "ListSAS",
-    "SetSAS",
-    "Update",
-    "Delete",
-    "Restore",
-  ]
-
-  certificate_permissions = [
-    "Get",
-    "List",
-    "Create",
-    "Update",
-    "Delete"
-  ]
-
-  key_permissions = [
-    "Get",
-    "List",
-    "Create",
-    "Update",
-    "Delete"
-  ]
-
-  secret_permissions = [
-    "Get",
-    "List",
-    "Set",
-    "Delete"
-  ]
-}
-
-resource "azurerm_key_vault_access_policy" "function_access" {
-  key_vault_id = azurerm_key_vault.kv_general.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_linux_function_app.data_modifier.identity[0].principal_id
-
-  secret_permissions = [
-    "Get"
-  ]
-}
-
-resource "azurerm_key_vault" "kv_blockchain" {
-  name                        = "${var.prefix}-kv-bchain"
-  location                    = data.azurerm_resource_group.block_of_energy_rg.location
-  resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
-  enabled_for_disk_encryption = true
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  soft_delete_retention_days  = 90
-  purge_protection_enabled    = true
-
-  sku_name = "standard"
-}
-
-resource "azurerm_key_vault_access_policy" "kv_blockchain_access_policy" {
-  key_vault_id = azurerm_key_vault.kv_blockchain.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
-
-  key_permissions = [
-    "Get",
-  ]
-  secret_permissions = []
-}
+# resource "azurerm_key_vault" "kv_blockchain" {
+#   name                        = "${var.prefix}-kv-bchain"
+#   location                    = data.azurerm_resource_group.block_of_energy_rg.location
+#   resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
+#   enabled_for_disk_encryption = true
+#   tenant_id                   = data.azurerm_client_config.current.tenant_id
+#   soft_delete_retention_days  = 90
+#   purge_protection_enabled    = true
+#
+#   sku_name = "standard"
+# }
+#
+# resource "azurerm_key_vault_access_policy" "kv_blockchain_access_policy" {
+#   key_vault_id = azurerm_key_vault.kv_blockchain.id
+#   tenant_id    = data.azurerm_client_config.current.tenant_id
+#   object_id    = data.azurerm_client_config.current.object_id
+#
+#   key_permissions = [
+#     "Get",
+#   ]
+#   secret_permissions = []
+# }

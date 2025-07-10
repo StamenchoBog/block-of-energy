@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Configuration
-APP_DISPLAY_NAME="terraform-github-oidc"
+APP_DISPLAY_NAME="tofu-github-oidc"
 
 # Error handling function
 handle_error() {

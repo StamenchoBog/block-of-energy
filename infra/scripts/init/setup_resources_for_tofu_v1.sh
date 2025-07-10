@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-APP_DISPLAY_NAME="terraform-github-oidc"
+APP_DISPLAY_NAME="tofu-github-oidc"
 GITHUB_REPO="StamenchoBog/block-of-energy"
 
 # Error handling function

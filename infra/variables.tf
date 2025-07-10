@@ -1,13 +1,3 @@
-variable "group_tenant_id" {
-  type    = string
-  default = "f0cac47b-e2b3-4e1b-a52f-487d2d996288"
-}
-
-variable "user_object_id" {
-  type    = string
-  default = "de3adcaa-55ea-46fe-ac8d-6984f655fabd"
-}
-
 variable "prefix" {
   type    = string
   default = "bk-of-energy"
@@ -16,6 +6,15 @@ variable "prefix" {
 variable "prefix_without_hyphens" {
   type    = string
   default = "bkofenergy"
+}
+
+variable "common_tags" {
+  type = map(string)
+  default = {
+    owner   = "Stamencho Bogdanovski"
+    project = "block-of-energy"
+    course  = "Building IoT and IoT Security"
+  }
 }
 
 variable "networking" {
@@ -28,18 +27,18 @@ variable "networking" {
     subnets = [
       {
         name              = "snet-aks"
-        description       = "Hosts the Kubernetes nodes and pods"
+        description       = "Hosts the Kubernetes nodes and pods for blockchain ledger"
         address_prefixes  = ["10.0.0.0/22"]
         create            = true
-        service_endpoints = []
+        service_endpoints = ["Microsoft.Storage", "Microsoft.AzureCosmosDB"]
         delegation        = []
       },
       {
         name              = "snet-functions"
-        description       = "Dedicated subnet for VNet Integration of the internal Azure Function Apps"
+        description       = "Dedicated subnet for VNet Integration of Azure Function Apps"
         address_prefixes  = ["10.0.4.0/25"]
         create            = true
-        service_endpoints = ["Microsoft.KeyVault", "Microsoft.Storage"]
+        service_endpoints = ["Microsoft.KeyVault", "Microsoft.Storage", "Microsoft.ServiceBus", "Microsoft.AzureCosmosDB"]
         delegation = [
           {
             name = "functions-delegation"
@@ -51,29 +50,37 @@ variable "networking" {
         ]
       },
       {
-        name              = "snet-private-endpoints"
-        description       = "Houses the Private Endpoints for PaaS services (Azure Data Explorer, Storage Account, Key Vault, Container Registry)."
-        address_prefixes  = ["10.0.4.128/26"]
-        create            = true
-        service_endpoints = []
-        delegation        = []
-      },
-      {
-        name              = "snet-app-gateway"
-        description       = "Hosts the Azure Application Gateway. This is the only entry point for user traffic from the internet."
+        name              = "snet-iot"
+        description       = "Dedicated subnet for IoT Hub service endpoints"
         address_prefixes  = ["10.0.5.0/26"]
         create            = true
         service_endpoints = []
         delegation        = []
       },
       {
-        name              = "snet-azure-firewall"
-        description       = "Hosts Azure Firewall to control all outbound traffic from your VNet to the internet."
-        address_prefixes  = ["10.0.6.0/26"]
+        name              = "snet-databases"
+        description       = "Dedicated subnet for CosmosDB service endpoints"
+        address_prefixes  = ["10.0.5.64/26"]
         create            = true
-        service_endpoints = []
+        service_endpoints = ["Microsoft.AzureCosmosDB"]
         delegation        = []
       },
+      {
+        name              = "snet-storages"
+        description       = "Dedicated subnet for Storage Accounts service endpoints"
+        address_prefixes  = ["10.0.5.128/26"]
+        create            = true
+        service_endpoints = ["Microsoft.Storage"]
+        delegation        = []
+      },
+      {
+        name              = "snet-service-buses"
+        description       = "Dedicated subnet for Service Bus service endpoints"
+        address_prefixes  = ["10.0.5.192/26"]
+        create            = true
+        service_endpoints = ["Microsoft.ServiceBus"]
+        delegation        = []
+      }
     ]
   }
 }

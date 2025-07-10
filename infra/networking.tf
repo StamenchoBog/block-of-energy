@@ -5,7 +5,7 @@ resource "azurerm_virtual_network" "vnet" {
   address_space       = var.networking.vnet.address_space
 }
 
-resource "azurerm_subnet" "subnet" {
+resource "azurerm_subnet" "subnets" {
   for_each = {
     for p in var.networking.subnets : p.name => p if p.create
   }
@@ -30,3 +30,57 @@ resource "azurerm_subnet" "subnet" {
     }
   }
 }
+
+# # NSG for Functions
+# resource "azurerm_network_security_group" "functions_nsg" {
+#   name                = "${var.prefix}-functions-nsg"
+#   location            = data.azurerm_resource_group.block_of_energy_rg.location
+#   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+#
+#   security_rule {
+#     name                       = "AllowHTTPS"
+#     priority                   = 1001
+#     direction                  = "Inbound"
+#     access                     = "Allow"
+#     protocol                   = "Tcp"
+#     source_port_range          = "*"
+#     destination_port_range     = "443"
+#     source_address_prefix      = "*"
+#     destination_address_prefix = "*"
+#   }
+#
+#   security_rule {
+#     name                       = "AllowServiceEndpoints"
+#     priority                   = 1003
+#     direction                  = "Outbound"
+#     access                     = "Allow"
+#     protocol                   = "Tcp"
+#     source_port_range          = "*"
+#     destination_port_ranges    = ["443", "1433", "5671", "5672"]
+#     source_address_prefix      = "*"
+#     destination_service_tag    = "AzureCloud"
+#   }
+#
+#   tags = var.common_tags
+# }
+
+# # NSG for other PaaS services
+# resource "azurerm_network_security_group" "paas_nsg" {
+#   name                = "${var.prefix}-paas-nsg"
+#   location            = data.azurerm_resource_group.block_of_energy_rg.location
+#   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+#
+#   security_rule {
+#     name                       = "AllowServiceEndpoints"
+#     priority                   = 1001
+#     direction                  = "Outbound"
+#     access                     = "Allow"
+#     protocol                   = "Tcp"
+#     source_port_range          = "*"
+#     destination_port_range     = "443"
+#     source_address_prefix      = "*"
+#     destination_service_tag    = "AzureCloud"
+#   }
+#
+#   tags = var.common_tags
+# }
