@@ -9,7 +9,7 @@ resource "azurerm_key_vault_certificate" "dps_root_ca" {
 
     key_properties {
       exportable = true
-      key_size   = 2048
+      key_size   = 4096
       key_type   = "RSA"
       reuse_key  = true
     }
