@@ -5,6 +5,7 @@ resource "null_resource" "dps_enrollment_group" {
         --dps-name ${azurerm_iothub_dps.iot_hub_dps.name} \
         --resource-group ${data.azurerm_resource_group.block_of_energy_rg.name} \
         --enrollment-id ${var.prefix}-smart-meters \
+        --iot-hubs ${azurerm_iothub.iothub.hostname}
         --allocation-policy geolatency \
         --provisioning-status enabled \
         --reprovision-policy reprovisionandmigratedata
