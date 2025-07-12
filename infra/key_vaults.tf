@@ -18,30 +18,6 @@ resource "azurerm_key_vault" "kv_general" {
   }
 }
 
-data "azuread_service_principal" "tofu_github_oidc" {
-  display_name = "tofu-github-oidc"
-}
-
-resource "azurerm_key_vault_access_policy" "kv_general_access_policy" {
-  key_vault_id = azurerm_key_vault.kv_general.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azuread_service_principal.tofu_github_oidc.object_id
-
-  certificate_permissions = [
-    "Get",
-    "List",
-    "Create",
-    "Import"
-  ]
-
-  secret_permissions = [
-    "Get",
-    "List",
-    "Set",
-    "Delete"
-  ]
-}
-
 # resource "azurerm_key_vault" "kv_blockchain" {
 #   name                        = "${var.prefix}-bchain-kv"
 #   location                    = data.azurerm_resource_group.block_of_energy_rg.location

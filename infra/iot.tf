@@ -1,8 +1,3 @@
-data "azurerm_key_vault_certificate" "dps_root_ca" {
-  name         = azurerm_key_vault_certificate.dps_root_ca.name
-  key_vault_id = azurerm_key_vault.kv_general.id
-}
-
 resource "azurerm_iothub" "iothub" {
   name                = "${var.prefix}-iot-hub"
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
@@ -47,11 +42,3 @@ resource "azurerm_iothub_dps" "iot_hub_dps" {
 
   tags = var.common_tags
 }
-
-resource "azurerm_iothub_dps_certificate" "dps_root_ca" {
-  name                = "energy-sensors-root-ca"
-  iot_dps_name        = azurerm_iothub_dps.iot_hub_dps.name
-  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
-  certificate_content = data.azurerm_key_vault_certificate.dps_root_ca.certificate_data
-}
-

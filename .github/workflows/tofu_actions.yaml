@@ -36,6 +36,11 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Install Azure Extensions
+      run: |
+        az extension add --name azure-iot --upgrade --yes
+        az version
+
     - name: OpenTofu - Setup Tofu
       uses: opentofu/setup-opentofu@v1.0.5
       with:
