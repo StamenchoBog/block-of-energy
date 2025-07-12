@@ -25,6 +25,7 @@ data "external" "dps_primary_key" {
       --dps-name ${azurerm_iothub_dps.iot_hub_dps.name} \
       --resource-group ${data.azurerm_resource_group.block_of_energy_rg.name} \
       --enrollment-id ${var.prefix}-smart-meters \
+      --show-keys \
       --query 'attestation.symmetricKey.primaryKey' \
       --output tsv | jq -R '{key: .}'
   EOT
@@ -39,6 +40,7 @@ data "external" "dps_secondary_key" {
       --dps-name ${azurerm_iothub_dps.iot_hub_dps.name} \
       --resource-group ${data.azurerm_resource_group.block_of_energy_rg.name} \
       --enrollment-id ${var.prefix}-smart-meters \
+      --show-keys \
       --query 'attestation.symmetricKey.secondaryKey' \
       --output tsv | jq -R '{key: .}'
   EOT
