@@ -21,7 +21,9 @@ resource "azurerm_iothub_shared_access_policy" "iot_hub_access_policy_tofu" {
   iothub_name         = azurerm_iothub.iothub.name
 
   registry_read   = true
+  registry_write  = true
   service_connect = true
+  device_connect  = true
 }
 
 resource "azurerm_iothub_dps" "iot_hub_dps" {
