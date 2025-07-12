@@ -1,21 +1,48 @@
-resource "azapi_resource" "dps_enrollment_group" {
-  type      = "Microsoft.Devices/provisioningServices/enrollmentGroups@2022-02-05"
-  name      = "${var.prefix}-smart-meters"
-  location  = data.azurerm_resource_group.block_of_energy_rg.location
-  parent_id = azurerm_iothub_dps.iot_hub_dps.id
-
-  schema_validation_enabled = false
-
-  body = {
-    properties = {
-      provisioningStatus = "enabled"
-      reprovisionPolicy = {
-        updateHubAssignment = true
-        migrateDeviceData   = true
-      }
-      allocationPolicy = "geoLatency"
-    }
+resource "null_resource" "dps_enrollment_group" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      az iot dps enrollment-group create \
+        --dps-name ${azurerm_iothub_dps.iot_hub_dps.name} \
+        --resource-group ${data.azurerm_resource_group.block_of_energy_rg.name} \
+        --enrollment-id ${var.prefix}-smart-meters \
+        --allocation-policy geolatency \
+        --provisioning-status enabled \
+        --reprovision-policy reprovisionandmigratedata
+    EOT
   }
 
   depends_on = [azurerm_iothub_dps.iot_hub_dps]
+
+  triggers = {
+    dps_name = azurerm_iothub_dps.iot_hub_dps.name
+    rg_name  = data.azurerm_resource_group.block_of_energy_rg.name
+  }
+}
+
+data "external" "dps_primary_key" {
+  program = ["bash", "-c", <<-EOT
+    az iot dps enrollment-group show \
+      --dps-name ${azurerm_iothub_dps.iot_hub_dps.name} \
+      --resource-group ${data.azurerm_resource_group.block_of_energy_rg.name} \
+      --enrollment-id ${var.prefix}-smart-meters \
+      --query 'attestation.symmetricKey.primaryKey' \
+      --output tsv | jq -R '{key: .}'
+  EOT
+  ]
+
+  depends_on = [null_resource.dps_enrollment_group]
+}
+
+data "external" "dps_secondary_key" {
+  program = ["bash", "-c", <<-EOT
+    az iot dps enrollment-group show \
+      --dps-name ${azurerm_iothub_dps.iot_hub_dps.name} \
+      --resource-group ${data.azurerm_resource_group.block_of_energy_rg.name} \
+      --enrollment-id ${var.prefix}-smart-meters \
+      --query 'attestation.symmetricKey.secondaryKey' \
+      --output tsv | jq -R '{key: .}'
+  EOT
+  ]
+
+  depends_on = [null_resource.dps_enrollment_group]
 }
