@@ -6,7 +6,11 @@ terraform {
     }
     azuread = {
       source  = "hashicorp/azuread"
-      version = "~> 3.4.0"
+      version = "~> 3.4"
+    }
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.5"
     }
   }
 
@@ -27,5 +31,9 @@ provider "azurerm" {
       recover_soft_deleted_key_vaults = true
     }
   }
+  use_oidc = true
+}
+
+provider "azapi" {
   use_oidc = true
 }
