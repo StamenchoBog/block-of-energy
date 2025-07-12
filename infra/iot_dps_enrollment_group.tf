@@ -7,9 +7,9 @@ resource "null_resource" "create_dps_enrollment_group_symmetric" {
         --resource-group "$RESOURCE_GROUP" \
         --dps-name "$DPS_NAME" \
         --enrollment-id "$ENROLLMENT_ID" \
+        --allocation-policy "geoLatency" \
         --provisioning-status enabled \
-        --reprovision-policy reprovisionandmigratedata \
-        --attestation-type symmetrickey
+        --reprovision-policy reprovisionandmigratedata
     EOT
     environment = {
       RESOURCE_GROUP = data.azurerm_resource_group.block_of_energy_rg.name
