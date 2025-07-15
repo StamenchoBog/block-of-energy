@@ -10,12 +10,14 @@ Data flow from the sensors to the application can be viewed on the diagram below
 
 In the following sections each block from the data flow diagram will be analyzed in detail.
 
-### Sensors
+### Local MQTT Broker and Sensors
 
-TODO
+TODO:
 
-### Connecto - Custom MQTT Broker forwarder
+### Custom MQTT "Forwarder" Broker
 
-Written in Node.JS. The application fetches data from the sensors and stores it in the hyper ledger network.
+TODO:
 
-TODO
+### Azure resources
+
+TODO:
