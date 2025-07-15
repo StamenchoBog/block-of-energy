@@ -1,0 +1,41 @@
+### Services ###
+services:
+  # PoC MQTT Broker for development
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./mosquitto/conf:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - iot-network
+
+  mqtt-forwarder:
+    build: mqtt-forwarder
+    container_name: mqtt-forwarder
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    environment:
+      - ID_SCOPE=${AZURE_DPS_ID_SCOPE}
+      - ENROLLMENT_ID=${AZURE_DPS_ENROLLMENT_ID}
+      - DEVICE_ID=${AZURE_DEVICE_ID}
+      - GROUP_PRIMARY_KEY=${AZURE_DPS_ENROLLMENT_GROUP_PRIMARY_KEY}
+      - MQTT_USER=${LOCAL_MQTT_USER}
+      - MQTT_PASS=${LOCAL_MQTT_PASSWORD}
+    networks:
+      - iot-network
+
+### Networks ###
+networks:
+  iot-network:
+    driver: bridge
+
+
+
+

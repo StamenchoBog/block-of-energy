@@ -127,3 +127,9 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Mosquitto PoC contaienr data and db
+mqtt-bridge/mosquitto/data/**/*
+mqtt-bridge/mosquitto/log/**/*
+
+*.env*
