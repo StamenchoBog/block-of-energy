@@ -12,7 +12,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
       contents: write
       id-token: write
 
@@ -42,13 +41,10 @@ jobs:
           pip install -r requirements.txt
           popd
 
-      - name: 'Run Azure Functions Action'
+      - name: 'Deploy the IoTHubProcessor function'
         uses: Azure/functions-action@v1
-        id: deploy-iot-hub-processor-function
+        id: deploy-iothubprocessor-function
         with:
-          app-name: 'bk-of-energy-modifier'
-          package: './infra/functions/IoTHubProcessor'
-          publish-profile: ${{ secrets.AZURE_MODIFIER_FUNCTIONAPP_PROFILE }}
-          scm-do-build-during-deployment: true
-          enable-oryx-build: true
+          app-name: "bk-of-energy-modifier"
+          package: ""./infra/functions/IoTHubProcessor"
       # Placeholder for other Azure Functions
