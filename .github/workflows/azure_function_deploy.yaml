@@ -18,10 +18,8 @@ jobs:
       - name: 'Archive the function app source code'
         uses: actions/upload-artifact@v4
         with:
-          name: iot-hub-processor-artifact
-          # This tells the action to take the contents of your function folder
-          # and make it available as an artifact for the next job.
-          path: ./infra/functions/IoTHubProcessor/
+          name: test-func-artifact
+          path: ./infra/functions/test-func
 
   deploy:
     runs-on: ubuntu-latest
@@ -34,7 +32,7 @@ jobs:
       - name: 'Download deployment artifact'
         uses: actions/download-artifact@v4
         with:
-          name: iot-hub-processor-artifact
+          name: test-func-artifact
 
       - name: Azure CLI Login
         uses: Azure/login@v2
@@ -43,9 +41,9 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'Deploy the IoTHubProcessor function'
+      - name: 'Deploy the test function'
         uses: Azure/functions-action@v1
-        id: deploy-iothubprocessor-function
+        id: deploy-test-func
         with:
           app-name: "bk-of-energy-modifier"
           package: "."
