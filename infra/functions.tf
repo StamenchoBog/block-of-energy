@@ -25,8 +25,7 @@ resource "azurerm_linux_function_app" "azure_function_modifier" {
   app_settings = {
     "FUNCTIONS_WORKER_RUNTIME" : "python",
     "FUNCTIONS_EXTENSION_VERSION" : "~4",
-
-    "AzureWebJobsStorage" : azurerm_storage_account.functions_storage.primary_connection_string,
+    "WEBSITE_CONTENTOVERVNET" : "1",
 
     # IoT Hub and Service Bus configuration
     "IOT_HUB_NAME" : azurerm_iothub.iothub.name,
