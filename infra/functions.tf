@@ -25,12 +25,8 @@ resource "azurerm_linux_function_app" "azure_function_modifier" {
   app_settings = {
     "FUNCTIONS_WORKER_RUNTIME" : "python",
     "FUNCTIONS_EXTENSION_VERSION" : "~4",
-    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" : "false",
-    "WEBSITE_RUN_FROM_PACKAGE" : "1",
 
     "AzureWebJobsStorage" : azurerm_storage_account.functions_storage.primary_connection_string,
-    "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING" : azurerm_storage_account.functions_storage.primary_connection_string,
-    "WEBSITE_CONTENTSHARE" : azurerm_storage_account.functions_storage.name,
 
     # IoT Hub and Service Bus configuration
     "IOT_HUB_NAME" : azurerm_iothub.iothub.name,
@@ -40,10 +36,4 @@ resource "azurerm_linux_function_app" "azure_function_modifier" {
   }
 
   tags = var.common_tags
-
-  lifecycle {
-    ignore_changes = [
-      app_settings["WEBSITE_RUN_FROM_PACKAGE"]
-    ]
-  }
 }
