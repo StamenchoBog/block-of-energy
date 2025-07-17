@@ -46,5 +46,5 @@ jobs:
         id: deploy-iothubprocessor-function
         with:
           app-name: "bk-of-energy-modifier"
-          package: ""./infra/functions/IoTHubProcessor"
+          package: "./infra/functions/IoTHubProcessor"
       # Placeholder for other Azure Functions
