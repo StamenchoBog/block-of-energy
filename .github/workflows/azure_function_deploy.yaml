@@ -49,5 +49,6 @@ jobs:
           app-name: 'bk-of-energy-modifier'
           package: './infra/functions/IoTHubProcessor'
           publish-profile: ${{ secrets.AZURE_MODIFIER_FUNCTIONAPP_PROFILE }}
-
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
       # Placeholder for other Azure Functions
