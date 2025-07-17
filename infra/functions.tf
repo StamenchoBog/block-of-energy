@@ -19,7 +19,7 @@ resource "azurerm_linux_function_app" "azure_function_modifier" {
 
   site_config {
     application_stack {
-      python_version = "3.13"
+      python_version = "3.12"
     }
     # TODO: Think if we need azure application insights
   }
