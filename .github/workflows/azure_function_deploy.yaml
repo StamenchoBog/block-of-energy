@@ -29,7 +29,7 @@ jobs:
       - name: 'Upload deployment package artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: python-function-app
+          name: test-func-artifact
           path: ./deployment.zip
 
   deploy:
