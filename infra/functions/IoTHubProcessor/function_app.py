@@ -24,6 +24,7 @@ def ProcessIoTHubMessage(event: list[func.EventHubEvent], outputServiceBusMessag
     """
 
     processed_messages = []
+
     for message in event:
         try:
             # Log the raw message details received from IoT Hub
