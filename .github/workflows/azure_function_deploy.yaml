@@ -15,22 +15,11 @@ jobs:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
 
-      - name: 'Set up Python version'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: 'Create deployment package'
-        shell: bash
-        run: |
-          cd ./infra/functions/IoTHubProcessor
-          zip -r ../../../deployment.zip .
-
-      - name: 'Upload deployment package artifact'
+      - name: 'Archive the function app source code'
         uses: actions/upload-artifact@v4
         with:
           name: test-func-artifact
-          path: ./deployment.zip
+          path: ./infra/functions/test-func
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,12 +41,9 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'List files in workspace'
-        run: ls -R
-
       - name: 'Deploy the test function'
         uses: Azure/functions-action@v1
-        id: deploy-iothubprocessor-function
+        id: deploy-test-func
         with:
           app-name: "bk-of-energy-modifier"
-          package: "deployment.zip"
+          package: "."
