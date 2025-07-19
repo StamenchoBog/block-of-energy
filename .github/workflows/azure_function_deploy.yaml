@@ -19,7 +19,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: iot-hub-processor-func-artifact
-          path: ./infra/functions/IoTHubProcessor
+          path: ./infra/functions/process_iot_hub_message
 
   deploy:
     runs-on: ubuntu-latest
