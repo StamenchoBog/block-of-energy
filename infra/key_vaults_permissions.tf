@@ -1,8 +1,10 @@
 ### KV General Permissions ####
+### Data
 data "azuread_service_principal" "tofu_github_oidc" {
   display_name = "tofu-github-oidc"
 }
 
+### Resources
 resource "azurerm_key_vault_access_policy" "kv_general_own_user_access_policy" {
   key_vault_id = azurerm_key_vault.kv_general.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
