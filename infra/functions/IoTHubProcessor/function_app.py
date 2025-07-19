@@ -1,6 +1,7 @@
 import azure.functions as func
 import logging
 import json
+import os
 
 app = func.FunctionApp()
 
@@ -10,13 +11,13 @@ app = func.FunctionApp()
     connection="IOT_HUB_CONNECTION_STRING",
     consumer_group="$Default",
     cardinality=func.Cardinality.MANY)
-# UPDATED: Changed from service_bus_queue_output to service_bus_topic_output
+# CORRECTED: Switched from a '$return' binding to an explicit output parameter.
 @app.service_bus_topic_output(
-    name="$return",
-    # UPDATED: Use topic_name instead of queue_name
+    arg_name="outputServiceBusMessage", # Use a named argument
     topic_name="%SERVICE_BUS_TOPIC_NAME%",
     connection="SERVICE_BUS_CONNECTION_STRING")
-def ProcessIoTHubMessage(event: list[func.EventHubEvent]):
+# CORRECTED: Added the output parameter to the function signature.
+def ProcessIoTHubMessage(event: list[func.EventHubEvent], outputServiceBusMessage: func.Out[str]):
     """
     Azure Function to process messages from IoT Hub and send to a Service Bus Topic.
     """
@@ -44,6 +45,7 @@ def ProcessIoTHubMessage(event: list[func.EventHubEvent]):
         except Exception as e:
             logging.error(f"An unexpected error occurred: {e}")
 
+    # CORRECTED: Use the .set() method on the output parameter instead of returning.
     if processed_messages:
-        logging.info(f"Returning {len(processed_messages)} messages to the Service Bus Topic output binding.")
-        return processed_messages
+        outputServiceBusMessage.set(processed_messages)
+        logging.info(f"Successfully sent {len(processed_messages)} messages to the Service Bus Topic.")
