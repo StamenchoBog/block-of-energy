@@ -21,15 +21,22 @@ resource "azurerm_linux_function_app" "azure_function_modifier" {
     application_stack {
       python_version = "3.12"
     }
-    # TODO: Think if we need azure application insights
+    application_insights_connection_string = azurerm_application_insights.app_insights.connection_string
+    application_insights_key               = azurerm_application_insights.app_insights.instrumentation_key
   }
 
   app_settings = {
-    # IoT Hub and Service Bus configuration
+    # IoT Hub configuration
     "IOT_HUB_NAME" : azurerm_iothub.iothub.name,
-    "IOT_HUB_CONNECTION_STRING" : azurerm_iothub_shared_access_policy.iot_hub_access_policy_tofu.primary_connection_string,
-    "SERVICE_BUS_QUEUE_NAME" : azurerm_servicebus_queue.sb_queue.name,
+    "IOT_HUB_CONNECTION_STRING" : format("Endpoint=%s;SharedAccessKeyName=%s;SharedAccessKey=%s;EntityPath=%s",
+      azurerm_iothub.iothub.event_hub_events_endpoint,
+      local.iothub_service_policy.key_name,
+      local.iothub_service_policy.primary_key,
+      azurerm_iothub.iothub.event_hub_events_path
+    ),
+    # Service Bus configuration
     "SERVICE_BUS_CONNECTION_STRING" : azurerm_servicebus_namespace.service_bus_namespace.default_primary_connection_string
+    "SERVICE_BUS_TOPIC_NAME" : azurerm_servicebus_topic.sb_topic.name,
   }
 
   tags = var.common_tags
