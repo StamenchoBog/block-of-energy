@@ -15,35 +15,44 @@ jobs:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
 
-      - name: 'Archive the function app source code'
+      - name: 'Archive the source code of the function `process_iot_hub_message_artifact`'
         uses: actions/upload-artifact@v4
         with:
-          name: iot-hub-processor-func-artifact
+          name: process_iot_hub_message_artifact
           path: ./infra/functions/process_iot_hub_message
+
+      - name: 'Archive the source code of the function `cosmos_db_writer`'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cosmos_db_writer_artifact
+          path: ./infra/functions/cosmos_db_writer
 
   deploy:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        function:
+          - name: process_iot_hub_message
+            app: bk-of-energy-modifier
+          - name: cosmos_db_writer
+            app: bk-of-energy-writer
     needs: build
     permissions:
       contents: write
       id-token: write
 
     steps:
-      - name: 'Download deployment artifact'
-        uses: actions/download-artifact@v4
-        with:
-          name: iot-hub-processor-func-artifact
+      - uses: actions/checkout@v4
 
-      - name: Azure CLI Login
+      - name: Azure Login
         uses: Azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'Deploy IoTHubProcessor function'
+      - name: Deploy ${{ matrix.function.name }}
         uses: Azure/functions-action@v1
-        id: deploy-iot-hub-processor-func
         with:
-          app-name: "bk-of-energy-modifier"
-          package: "."
+          app-name: ${{ matrix.function.app }}
+          package: ./infra/functions/${{ matrix.function.name }}
