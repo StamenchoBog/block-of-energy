@@ -6,10 +6,12 @@ from pymongo import MongoClient
 
 import azure.functions as func
 
+# MongoDB credentials and parameters
 mongo_connection_string = os.getenv("COSMOSDB_CONNECTION")
 mongo_db_name = os.getenv("COSMOS_DB_NAME")
 mongo_container_name = os.getenv("COSMOS_CONTAINER_NAME")
 
+# MongoDB client
 mongo_client = MongoClient(mongo_connection_string, tlsCAFile=certifi.where())
 mongo_db = mongo_client[mongo_db_name]
 mongo_collection = mongo_db[mongo_container_name]
