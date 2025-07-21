@@ -29,7 +29,7 @@ run with the Forwarder in the `docker-compose.yaml` file.
 
 - Docker and Docker Compose
 - Azure IoT Hub configured with DPS
-- Python 3.11+ (for local development)
+- Python 3.12+ (for local development)
 
 ### Quick Start
 

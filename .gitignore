@@ -129,7 +129,7 @@ override.tf.json
 terraform.rc
 
 # Mosquitto PoC contaienr data and db
-mqtt-bridge/mosquitto/data/**/*
-mqtt-bridge/mosquitto/log/**/*
+forward-proxy/mosquitto/data/**/*
+forward-proxy/mosquitto/log/**/*
 
 *.env*
