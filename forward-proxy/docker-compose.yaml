@@ -2,7 +2,7 @@
 services:
   # PoC MQTT Broker for development
   mosquitto:
-    image: eclipse-mosquitto:latest
+    image: eclipse-mosquitto:2.0.22
     container_name: mosquitto-broker
     restart: unless-stopped
     ports:

@@ -1,0 +1,30 @@
+---
+network:
+  - type: fabric
+    version: 2.5.4
+    namespace: supplychain-net
+    images:
+      fabrictools: ghcr.io/hyperledger/bevel-fabric-tools:2.5.4
+      alpineutils: ghcr.io/hyperledger/bevel-alpine:latest
+
+peer:
+  name: "peer0"
+  address: "peer0.supplychain-net:7051"
+  localmspid: "Org1MSP"
+  tlsstatus: true
+
+orderer:
+  address: "orderer1.supplychain-net:7050"
+
+chaincode:
+  builder: hyperledger/fabric-ccenv:2.5
+  name: "hashstorage"
+  version: "1.0"
+  lang: "golang"
+  maindirectory: "hyperledger-fabric/chaincode"
+  repository:
+    hostname: "github.com"
+    url: "https://github.com/StamenchoBog/block-of-energy"
+    branch: main
+    path: "./hyperledger-fabric/chaincode"
+    git_username: "StamenchoBog"
