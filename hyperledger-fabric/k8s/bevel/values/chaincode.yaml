@@ -1,11 +1,11 @@
 ---
-network:
-  - type: fabric
+metadata:
+  network:
     version: 2.5.4
-    namespace: supplychain-net
-    images:
-      fabrictools: ghcr.io/hyperledger/bevel-fabric-tools:2.5.4
-      alpineutils: ghcr.io/hyperledger/bevel-alpine:latest
+  namespace: supplychain-net
+  images:
+    fabrictools: ghcr.io/hyperledger/bevel-fabric-tools:2.5.4
+    alpineutils: ghcr.io/hyperledger/bevel-alpine:latest
 
 peer:
   name: "peer0"
@@ -16,15 +16,27 @@ peer:
 orderer:
   address: "orderer1.supplychain-net:7050"
 
+vault:
+  role:
+  address:
+  authpath: devorg1-net-auth
+  adminsecretprefix:
+  orderersecretprefix:
+  secretgitprivatekey:
+  serviceaccountname: vault-auth
+  type: kubernetes
+  imagesecretname:
+  tls:
+
 chaincode:
-  builder: hyperledger/fabric-ccenv:2.5
+  builder: hyperledger/fabric-ccenv:3.1
   name: "hashstorage"
   version: "1.0"
   lang: "golang"
-  maindirectory: "hyperledger-fabric/chaincode"
+  maindirectory: ""
   repository:
     hostname: "github.com"
-    url: "https://github.com/StamenchoBog/block-of-energy"
+    url: "github.com/StamenchoBog/block-of-energy"
     branch: main
     path: "./hyperledger-fabric/chaincode"
     git_username: "StamenchoBog"

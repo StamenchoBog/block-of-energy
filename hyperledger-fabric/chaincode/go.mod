@@ -1,4 +1,4 @@
-module github.com/chaincode/hashstorage
+module hashstorage
 
 go 1.24
 
