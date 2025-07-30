@@ -15,7 +15,9 @@ type SmartContract struct {
 
 // HashData describes basic details of what we are storing
 type HashData struct {
-	Value string `json:"value"`
+	Value     string `json:"value"`
+	Timestamp string `json:"timestamp"`
+	DeviceID  string `json:"deviceID,omitempty"`
 }
 
 // StoreHash adds a new hash to the ledger
