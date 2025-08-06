@@ -30,6 +30,7 @@ def process_iot_hub_message(event: func.EventHubEvent, output: func.Out[str]) ->
         }
 
         output.set(json.dumps(modified_payload))
+
         logging.info(f"Processed message from device: {device_id}")
 
     except Exception as e:
