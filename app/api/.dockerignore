@@ -1,0 +1,31 @@
+# Version control
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment variables (should be added at runtime)
+.env*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Development files
+README.md
+.prettierrc
+jest.config.js
+tsconfig.tsbuildinfo
+
+# Build artifacts
+dist/
+# IDE specific files
+.vscode/
+
+# Docker related
+Dockerfile*
+docker-compose*
+.dockerignore

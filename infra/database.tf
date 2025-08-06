@@ -33,7 +33,7 @@ resource "azurerm_cosmosdb_mongo_collection" "collection" {
   account_name        = azurerm_cosmosdb_account.cosmos_account.name
   database_name       = azurerm_cosmosdb_mongo_database.cosmos_mongodb.name
 
-  default_ttl_seconds = "777"
+  default_ttl_seconds = "-1"
   shard_key           = "deviceId"
   throughput          = 400
 

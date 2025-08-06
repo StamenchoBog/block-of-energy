@@ -35,24 +35,17 @@ def process_service_bus_to_cosmosdb(msg: func.ServiceBusMessage) -> None:
         processing_timestamp = raw_payload.get("processingTimestamp")
         original_payload = raw_payload.get("originalPayload", {})
 
-        documents = []
+        document = {
+            "_id": f"{sequence_id}",
+            "deviceId": device_id,
+            "payload": original_payload,
+            "processingTimestamp": processing_timestamp,
+            "cosmosInsertTimestamp": msg.enqueued_time_utc.isoformat(),
+            "status": raw_payload.get("status", "processed")
+        }
 
-        for key, value in original_payload.items():
-            doc = {
-                "_id": f"{sequence_id}-{key}",
-                "deviceId": device_id,
-                "type": key,
-                "value": value,
-                "processingTimestamp": processing_timestamp,
-                "cosmosInsertTimestamp": msg.enqueued_time_utc.isoformat(),
-                "status": raw_payload.get("status", "processed"),
-                "messageSource": raw_payload.get("messageSource", "Unknown")
-            }
-            documents.append(doc)
-
-        if documents:
-            mongo_collection.insert_many(documents)
-            logging.info(f"Inserted {len(documents)} documents into MongoDB")
+        mongo_collection.insert_one(document)
+        logging.info(f"Successfully inserted document into MongoDB for device {device_id}")
 
     except Exception as e:
         logging.error(f"Failed to process and store message in Cosmos DB MongoDB API: {e}")

@@ -1,0 +1,67 @@
+---
+import '../../styles/global.css';
+import NavLink from "../common/NavLink.astro";
+
+interface Props {
+    title: string;
+    activeNav: 'overview' | 'devices' | 'reports';
+}
+
+const { title, activeNav } = Astro.props;
+---
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Astro Energy Consumption Dashboard" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/thunder.svg" />
+    <title>{title} | Energy Monitor</title>
+</head>
+<body class="bg-base-200 min-h-screen">
+<div class="navbar bg-base-100 shadow-md">
+    <div class="navbar-start">
+        <div class="dropdown">
+            <label tabindex="0" class="btn btn-ghost lg:hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
+            </label>
+            <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                <NavLink href="/" text="Overview" active={activeNav === 'overview'} />
+                <NavLink href="/reports" text="Reports" active={activeNav === 'reports'} />
+            </ul>
+        </div>
+        <a href="/app/frontend/public" class="btn btn-ghost text-xl normal-case">
+            <img src="/thunder.svg" alt="Energy Monitor Icon" class="h-6 w-6 mr-2" />
+            Energy Monitor
+        </a>
+    </div>
+    <div class="navbar-center hidden lg:flex">
+        <ul class="menu menu-horizontal px-1">
+            <NavLink href="/" text="Overview" active={activeNav === 'overview'} />
+            <NavLink href="/reports" text="Reports" active={activeNav === 'reports'} />
+        </ul>
+    </div>
+    <div class="navbar-end">
+        <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+                <div class="w-10 rounded-full">
+                    <!-- TODO: Use img component to improve performance -->
+                    <img alt="User Avatar" src="https://placehold.co/100x100/a3e635/000000?text=U" />
+                </div>
+            </div>
+            <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+                <li>
+                    <a class="justify-between">
+                        Profile
+                        <span class="badge">New</span>
+                    </a>
+                </li>
+                <li><a>Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+ <!-- Slot for other children components -->
+<slot />
+</body>
+</html>

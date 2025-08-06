@@ -17,7 +17,7 @@ MQTT_USER = os.getenv("MQTT_USER")
 MQTT_PASS = os.getenv("MQTT_PASS")
 
 # --- MQTT Topics ---
-LOCAL_SENSORS_TOPIC = "sensors/#"
+LOCAL_SENSORS_TOPIC = "tele/#"
 message_queue = queue.Queue()
 
 def log_message(message):
@@ -75,8 +75,8 @@ def derive_device_key(device_id, group_symmetric_key):
         signed_hmac = hmac.HMAC(signing_key, message, hashlib.sha256)
         device_key_encoded = base64.b64encode(signed_hmac.digest())
         return device_key_encoded.decode("utf-8")
-    except Exception as e:
-        log_message(f"Error deriving device key: {e}")
+    except Exception as ex:
+        log_message(f"Error deriving device key: {ex}")
         raise
 
 # --- Main Execution ---
@@ -130,7 +130,7 @@ try:
     sender_thread = threading.Thread(target=azure_sender_thread, args=(azure_client,), daemon=True)
     sender_thread.start()
 
-    log_message("Bridge is running. Forwarding messages from local 'sensors/#' to Azure.")
+    log_message(f"Bridge is running. Forwarding messages from local '{LOCAL_SENSORS_TOPIC}' to Azure.")
 
     # Keep the main thread alive and wait for the sender thread to finish
     sender_thread.join()
