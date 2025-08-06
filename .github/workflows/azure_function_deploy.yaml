@@ -42,7 +42,11 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Download ${{ matrix.function.name }} artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.function.name }}_artifact
+          path: ./infra/functions/${{ matrix.function.name }}
 
       - name: Azure Login
         uses: Azure/login@v2
@@ -50,12 +54,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Download ${{ matrix.function.name }} artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ matrix.function.name }}_artifact
-          path: ./infra/functions/${{ matrix.function.name }}
 
       - name: Deploy ${{ matrix.function.name }}
         uses: Azure/functions-action@v1
