@@ -1,0 +1,17 @@
+---
+interface Props {
+    href: string;
+    text: string;
+    active?: boolean;
+}
+
+const { href, text, active } = Astro.props;
+---
+<li>
+    <a href={href} class:list={[
+        "btn btn-ghost",
+        { "btn-active": active }
+    ]}>
+        {text}
+    </a>
+</li>
