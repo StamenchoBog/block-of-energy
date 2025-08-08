@@ -24,7 +24,9 @@ resource "azurerm_cosmosdb_mongo_database" "cosmos_mongodb" {
   name                = "telemetry-db"
   resource_group_name = azurerm_cosmosdb_account.cosmos_account.resource_group_name
   account_name        = azurerm_cosmosdb_account.cosmos_account.name
-  throughput          = 400
+  autoscale_settings {
+    max_throughput = 1000
+  }
 }
 
 resource "azurerm_cosmosdb_mongo_collection" "collection" {

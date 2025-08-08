@@ -1,5 +1,4 @@
 ### Data
-
 data "external" "service_event_hub_compatible_endpoint" {
   program = [
     "bash", "-c", <<-EOT
@@ -81,6 +80,7 @@ resource "azurerm_linux_function_app" "azure_function_cosmodb_writer" {
   }
 
   app_settings = {
+    "WEBSITE_ENABLE_SYNC_UPDATE_SITE" : "true"
     # Service Bus configuration
     "SERVICE_BUS_CONNECTION__fullyQualifiedNamespace" : regex("^https?://([^:/]+)", azurerm_servicebus_namespace.service_bus_namespace.endpoint)[0]
     "SERVICE_BUS_TOPIC_NAME" : azurerm_servicebus_topic.sb_topic.name,
