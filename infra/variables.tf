@@ -84,11 +84,3 @@ variable "networking" {
     ]
   }
 }
-
-variable "smart_meter_devices_ids" {
-  type = list(string)
-  default = [
-    "POC001"
-    # Add other devices here in order for them to get certificates
-  ]
-}

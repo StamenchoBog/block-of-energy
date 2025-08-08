@@ -14,16 +14,30 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 'Archive the source code of the function `process_iot_hub_message_artifact`'
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Build process_iot_hub_message
+        run: |
+          pip install -r requirements.txt --target ./.python_packages/lib/site-packages
+        working-directory: ./infra/functions/process_iot_hub_message
+
+      - name: Archive process_iot_hub_message
         uses: actions/upload-artifact@v4
         with:
           name: process_iot_hub_message_artifact
           path: ./infra/functions/process_iot_hub_message
 
-      - name: 'Archive the source code of the function `cosmos_db_writer`'
+      - name: Build cosmos_db_writer
+        run: |
+          pip install -r requirements.txt --target ./.python_packages/lib/site-packages
+        working-directory: ./infra/functions/cosmos_db_writer
+
+      - name: Archive cosmos_db_writer
         uses: actions/upload-artifact@v4
         with:
           name: cosmos_db_writer_artifact
@@ -44,7 +58,11 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Download ${{ matrix.function.name }} artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.function.name }}_artifact
+          path: ./infra/functions/${{ matrix.function.name }}
 
       - name: Azure Login
         uses: Azure/login@v2
