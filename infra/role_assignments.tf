@@ -1,5 +1,4 @@
 ### Function(s) role assignments
-
 # Azure Function - Process IoTHub Message
 resource "azurerm_role_assignment" "function_receives_from_iothub" {
   scope                = azurerm_iothub.iothub.id
