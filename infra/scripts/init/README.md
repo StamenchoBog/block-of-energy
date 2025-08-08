@@ -80,50 +80,6 @@ After running both scripts, add these secrets to your GitHub repository:
 | `AZURE_TENANT_ID` | Tenant ID from script output | Azure AD tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID from script output | Azure subscription ID |
 
-## GitHub Actions Workflow Configuration
-
-Create a workflow file (e.g., `.github/workflows/tofu.yml`) with OIDC authentication:
-
-```yaml
-name: Tofu CI/CD
-
-on:
-push:
-branches: [ main ]
-pull_request:
-branches: [ main ]
-
-permissions:
-id-token: write
-contents: read
-
-jobs:
-tofu:
-runs-on: ubuntu-latest
-steps:
-- uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      
-      - name: Setup Tofu
-        uses: opentofu/setup-opentofu@v1
-        
-      - name: Tofu Init
-        run: tofu init
-        
-      - name: Tofu Plan
-        run: tofu plan
-        
-      - name: Tofu Apply
-        if: github.ref == 'refs/heads/main'
-        run: tofu apply -auto-approve
-```
-
 ## Script Details
 
 ### setup_resources_for_tofu_v1.sh
