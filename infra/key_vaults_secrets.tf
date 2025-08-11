@@ -4,7 +4,11 @@ resource "azurerm_key_vault_secret" "dps_primary_key" {
   value        = data.external.dps_primary_key.result.key
   key_vault_id = azurerm_key_vault.kv_general.id
 
-  depends_on = [data.external.dps_primary_key]
+  depends_on = [
+    data.external.dps_primary_key,
+    azurerm_key_vault_access_policy.kv_general_own_user_access_policy,
+    azurerm_key_vault_access_policy.kv_general_tofu_access_policy
+  ]
 }
 
 resource "azurerm_key_vault_secret" "dps_secondary_key" {
@@ -12,7 +16,11 @@ resource "azurerm_key_vault_secret" "dps_secondary_key" {
   value        = data.external.dps_secondary_key.result.key
   key_vault_id = azurerm_key_vault.kv_general.id
 
-  depends_on = [data.external.dps_secondary_key]
+  depends_on = [
+    data.external.dps_secondary_key,
+    azurerm_key_vault_access_policy.kv_general_own_user_access_policy,
+    azurerm_key_vault_access_policy.kv_general_tofu_access_policy
+  ]
 }
 
 resource "azurerm_key_vault_secret" "tasmota_dps_config" {
@@ -32,6 +40,8 @@ resource "azurerm_key_vault_secret" "tasmota_dps_config" {
   depends_on = [
     azurerm_iothub_dps.iot_hub_dps,
     azurerm_iothub.iothub,
-    data.external.dps_primary_key
+    data.external.dps_primary_key,
+    azurerm_key_vault_access_policy.kv_general_own_user_access_policy,
+    azurerm_key_vault_access_policy.kv_general_tofu_access_policy
   ]
 }

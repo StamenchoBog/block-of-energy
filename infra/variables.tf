@@ -11,9 +11,11 @@ variable "prefix_without_hyphens" {
 variable "common_tags" {
   type = map(string)
   default = {
-    owner   = "Stamencho Bogdanovski"
-    project = "block-of-energy"
-    course  = "Building IoT and IoT Security"
+    owner      = "Stamencho Bogdanovski"
+    project    = "block-of-energy"
+    index      = "249043"
+    course_en  = "Building IoT and IoT Security"
+    course_mkd = "Градење на Интернет од Нешта и безбедност"
   }
 }
 
