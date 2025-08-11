@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - name: Download ${{ matrix.function.name }} artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ matrix.function.name }}_artifact
           path: ./infra/functions/${{ matrix.function.name }}
