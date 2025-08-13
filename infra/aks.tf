@@ -28,4 +28,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
     dns_service_ip = "10.240.0.10"
     service_cidr   = "10.240.0.0/16"
   }
+
+  api_server_access_profile {
+    authorized_ip_ranges = ["84.226.191.59", "77.28.75.231"]
+  }
 }
