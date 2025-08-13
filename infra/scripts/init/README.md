@@ -16,7 +16,7 @@ Before running the automated scripts, you need to manually create a storage acco
 RESOURCE_GROUP_NAME="your-resource-group"
 STORAGE_ACCOUNT_NAME="your-unique-storage-account-name"
 CONTAINER_NAME="tfstate"
-LOCATION="eastus"
+LOCATION="your-azure-region"
 
 # Create resource group (if it doesn't exist)
 az group create --name $RESOURCE_GROUP_NAME --location $LOCATION

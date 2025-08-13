@@ -16,7 +16,7 @@ terraform {
 
   backend "azurerm" {
     resource_group_name  = "block-of-energy"
-    storage_account_name = "tfstate81286508211"
+    storage_account_name = "bkpofchaintofustate"
     container_name       = "tfstate"
     key                  = "tfstate-data"
     use_oidc             = true
@@ -24,7 +24,7 @@ terraform {
 }
 
 provider "azurerm" {
-  subscription_id = "888373c5-ca31-4c58-99d8-5c45312d8561" # Personal Playground
+  subscription_id = "9b6d6abe-6e6f-46b4-ba07-f92d066f88ab" # Azure for Students
   features {
     key_vault {
       purge_soft_delete_on_destroy    = true

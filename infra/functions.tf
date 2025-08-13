@@ -16,7 +16,7 @@ data "external" "service_event_hub_compatible_endpoint" {
 
 ### Resources
 resource "azurerm_service_plan" "functions_service_plan" {
-  name                = "${var.prefix}-service-plan"
+  name                = "${var.prefix}-service-plan-${random_id.project_random_id.hex}"
   location            = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
   os_type             = "Linux"
@@ -25,7 +25,7 @@ resource "azurerm_service_plan" "functions_service_plan" {
 
 # Function `process_iot_hub_message`
 resource "azurerm_linux_function_app" "azure_function_modifier" {
-  name                = "${var.prefix}-modifier"
+  name                = "${var.prefix}-modifier-${random_id.project_random_id.hex}"
   location            = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
 
@@ -59,7 +59,7 @@ resource "azurerm_linux_function_app" "azure_function_modifier" {
 
 # Function `cosmo_db_writer`
 resource "azurerm_linux_function_app" "azure_function_cosmodb_writer" {
-  name                = "${var.prefix}-cosmodb-writer"
+  name                = "${var.prefix}-cosmodb-writer-${random_id.project_random_id.hex}"
   location            = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
 
