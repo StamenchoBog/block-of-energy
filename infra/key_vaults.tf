@@ -1,5 +1,5 @@
 resource "azurerm_key_vault" "kv_general" {
-  name                        = "${var.prefix}-general-kv"
+  name                        = "general-kv${random_id.project_random_id.hex}"
   location                    = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name         = data.azurerm_resource_group.block_of_energy_rg.name
   enabled_for_disk_encryption = true
@@ -19,7 +19,7 @@ resource "azurerm_key_vault" "kv_general" {
 }
 
 resource "azurerm_key_vault" "kv_blockchain" {
-  name                            = "${var.prefix}-bchain-kv"
+  name                            = "bchain-kv${random_id.project_random_id.hex}"
   location                        = data.azurerm_resource_group.block_of_energy_rg.location
   resource_group_name             = data.azurerm_resource_group.block_of_energy_rg.name
   tenant_id                       = data.azurerm_client_config.current.tenant_id

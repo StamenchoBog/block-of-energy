@@ -12,16 +12,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
   default_node_pool {
     name                        = "default"
     node_count                  = 2
-    vm_size                     = "Standard_D2as_v6"
+    vm_size                     = "Standard_B2s_v2"
     os_sku                      = "Ubuntu"
     temporary_name_for_rotation = "defaultold"
     vnet_subnet_id              = azurerm_subnet.subnets["snet-aks"].id
-
-    upgrade_settings {
-      drain_timeout_in_minutes      = 5
-      max_surge                     = "10%"
-      node_soak_duration_in_minutes = 0
-    }
   }
 
   identity {
