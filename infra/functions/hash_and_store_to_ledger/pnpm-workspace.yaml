@@ -1,0 +1,4 @@
+ignoredBuiltDependencies:
+  - azure-functions-core-tools
+  - pkcs11js
+  - protobufjs

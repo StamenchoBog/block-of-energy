@@ -93,3 +93,41 @@ resource "azurerm_linux_function_app" "azure_function_cosmodb_writer" {
 
   tags = var.common_tags
 }
+
+# Function `hash_and_store_to_ledger`
+resource "azurerm_linux_function_app" "azure_function_hash_and_store" {
+  name                = "${var.prefix}-hash-and-store-${random_id.project_random_id.hex}"
+  location            = data.azurerm_resource_group.block_of_energy_rg.location
+  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+
+  storage_account_name       = azurerm_storage_account.functions_storage.name
+  storage_account_access_key = azurerm_storage_account.functions_storage.primary_access_key
+  service_plan_id            = azurerm_service_plan.functions_service_plan.id
+
+  functions_extension_version = "~4"
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  site_config {
+    application_stack {
+      node_version = "18"
+    }
+  }
+
+  app_settings = {
+    # Service Bus configuration
+    "SERVICE_BUS_CONNECTION_STRING" : azurerm_servicebus_namespace.service_bus_namespace.default_primary_connection_string,
+    "SERVICE_BUS_TOPIC_NAME" : azurerm_servicebus_topic.sb_topic.name,
+    "SERVICE_BUS_SUBSCRIPTION_NAME" : azurerm_servicebus_subscription.ledger_func_subscription.name,
+
+    # Hyperledger Fabric configuration
+    "FABRIC_MSP_ID" : "Org1MSP",
+    "FABRIC_CHANNEL_NAME" : "hashstoragechannel",
+    "FABRIC_CHAINCODE_NAME" : "hash",
+    "FABRIC_GATEWAY_ENDPOINT" : var.fabric_gateway_endpoint # e.g., "peer0.org1.example.com:7051"
+  }
+
+  tags = var.common_tags
+}

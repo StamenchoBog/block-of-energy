@@ -86,3 +86,8 @@ variable "networking" {
     ]
   }
 }
+
+variable "fabric_gateway_endpoint" {
+  type = string
+  default = "peer0.org1.example.com:7051"
+}

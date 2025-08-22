@@ -18,4 +18,8 @@ resource "azurerm_servicebus_subscription" "cosmodb_db_subscription" {
   max_delivery_count = 10
 }
 
-# TODO: Add subscription for Hashing func
+resource "azurerm_servicebus_subscription" "ledger_func_subscription" {
+  name               = "ledger-func-subscription"
+  topic_id           = azurerm_servicebus_topic.sb_topic.id
+  max_delivery_count = 10
+}
