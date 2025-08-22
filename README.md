@@ -20,9 +20,44 @@ The sensors deployed for the current PoC (Proof-of-Concept) are [Nous A1T](https
 with a flashed [Tasmota](https://tasmota.github.io/docs/) firmware.
 The sensor devices are able to measure and detect the following parameters:
 
-- TODO1
-- TODO2
-- TODO3
+Example MQTT message of the sensor:
+```json
+{
+  "timestamp": "2025-08-21T18:23:28.067Z",
+  "Uptime": "0T01:00:00",
+  "UptimeSec": 3600,
+  "Vcc": 3.339,
+  "Heap": 23,
+  "SleepMode": "Dynamic",
+  "Sleep": 50,
+  "LoadAvg": 15,
+  "MqttCount": 1,
+  "Wifi": {
+    "AP": 1,
+    "SSId": "TEST_WIFI",
+    "BSSId": "AA:BB:CC:DD:EE:FF",
+    "Channel": 6,
+    "Mode": "11n",
+    "RSSI": 83,
+    "Signal": -61,
+    "LinkCount": 1,
+    "Downtime": "0T00:00:03"
+  },
+  "ENERGY": {
+    "TotalStartTime": "2025-08-21T00:00:00",
+    "Total": 10.017,
+    "Yesterday": 6.87,
+    "Today": 0.017,
+    "Period": 14,
+    "Power": 203,
+    "ApparentPower": 207,
+    "ReactivePower": 40,
+    "Factor": 0.98,
+    "Voltage": 223,
+    "Current": 0.93
+  }
+}
+```
 
 #### MQTT Broker
 
@@ -52,13 +87,13 @@ Resources deployed on Azure:
 - Azure Function(s)
   - `process_iot_hub_message`
   - `cosmos_db_writer`
-  - `hash_and_store_to_ledger` (To be deployed)
+  - `hash_and_store_to_ledger`
   - `scheduled_temper_check` (To be deployed)
 - Service Bus (Topic and Subscription)
 - CosmosDB MongoDB database
 - AKS
   - Ledger deployed in namespace `bkp-of-energy-blockchain`
-  - Application deployed in `bkp-of-energy-application` 
+  - Application deployed in `bkp-of-energy-application`
 - ...
 
 ### Local development
@@ -74,3 +109,11 @@ Resources deployed on Azure:
 ### Improvements
 
 - Migrate `Forwarder Proxy` to use a language with a better throughput capabilities (like GoLang, etc.).
+
+### Application Images
+
+![Dashboard](docs/images/application/01_dashboard.png)
+![Daily Report](docs/images/application/02_daily_report.png)
+![Weekly Report](docs/images/application/03_weekly_report.png)
+![Monthly Report](docs/images/application/04_monthly_report.png)
+![Yearly Report](docs/images/application/05_yearly_report.png)
