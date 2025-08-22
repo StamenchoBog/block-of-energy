@@ -12,12 +12,11 @@ console.log('API_URL configured:', API_URL);
 export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
-    server: {
+            server: {
       proxy: {
         '/api': {
           target: API_URL,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          changeOrigin: true
         }
       }
     }
