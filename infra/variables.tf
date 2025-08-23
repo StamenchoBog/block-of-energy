@@ -88,6 +88,7 @@ variable "networking" {
 }
 
 variable "fabric_gateway_endpoint" {
-  type = string
+  type    = string
+  # Local test-network
   default = "peer0.org1.example.com:7051"
 }

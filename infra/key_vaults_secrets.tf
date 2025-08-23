@@ -48,3 +48,21 @@ resource "azurerm_key_vault_secret" "tasmota_dps_config" {
     azurerm_key_vault_access_policy.kv_general_tofu_access_policy
   ]
 }
+
+resource "azurerm_key_vault_secret" "fabric_cert_pem" {
+  name         = "fabric-cert-pem"
+  value        = file("${path.module}/../hyperledger-fabric/certs/cert.pem")
+  key_vault_id = azurerm_key_vault.kv_general.id
+}
+
+resource "azurerm_key_vault_secret" "fabric_key_pem" {
+  name         = "fabric-key-pem"
+  value        = file("${path.module}/../hyperledger-fabric/certs/key.pem")
+  key_vault_id = azurerm_key_vault.kv_general.id
+}
+
+resource "azurerm_key_vault_secret" "fabric_tls_cert_pem" {
+  name         = "fabric-tls-cert-pem"
+  value        = file("${path.module}/../hyperledger-fabric/certs/ca.pem")
+  key_vault_id = azurerm_key_vault.kv_general.id
+}

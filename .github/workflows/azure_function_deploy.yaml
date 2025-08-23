@@ -1,4 +1,4 @@
-name: Deploy Python Function App to Azure
+name: Deploy Function App to Azure
 
 on:
   push:
@@ -15,6 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -43,6 +54,30 @@ jobs:
           name: cosmos_db_writer_artifact
           path: ./infra/functions/cosmos_db_writer
 
+      - name: Build continuous_temper_auditor
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+        working-directory: ./infra/functions/continuous_temper_auditor
+
+      - name: Archive continuous_temper_auditor
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuous_temper_auditor_artifact
+          path: ./infra/functions/continuous_temper_auditor
+
+      - name: Build full_temper_auditor
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+        working-directory: ./infra/functions/full_temper_auditor
+
+      - name: Archive full_temper_auditor
+        uses: actions/upload-artifact@v4
+        with:
+          name: full_temper_auditor_artifact
+          path: ./infra/functions/full_temper_auditor
+
   deploy:
     runs-on: ubuntu-latest
     strategy:
@@ -52,6 +87,10 @@ jobs:
             app: bk-of-energy-modifier
           - name: cosmos_db_writer
             app: bk-of-energy-cosmodb-writer
+          - name: continuous_temper_auditor
+            app: bk-of-energy-continuous-temper-auditor
+          - name: full_temper_auditor
+            app: bk-of-energy-full-temper-auditor
     needs: build
     permissions:
       contents: write

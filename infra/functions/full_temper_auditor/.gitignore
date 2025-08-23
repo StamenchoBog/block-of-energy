@@ -24,7 +24,6 @@ local.settings.json
 
 node_modules
 dist
-crypto/
 
 # Local python packages
 .python_packages/

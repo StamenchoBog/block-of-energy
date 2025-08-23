@@ -88,13 +88,23 @@ Resources deployed on Azure:
   - `process_iot_hub_message`
   - `cosmos_db_writer`
   - `hash_and_store_to_ledger`
-  - `scheduled_temper_check` (To be deployed)
+  - `full_temper_auditor`
+  - `continuous_temper_auditor`
 - Service Bus (Topic and Subscription)
 - CosmosDB MongoDB database
 - AKS
   - Ledger deployed in namespace `bkp-of-energy-blockchain`
   - Application deployed in `bkp-of-energy-application`
 - ...
+
+### Temper Auditing Strategy
+
+To ensure the integrity of the stored data, a two-layered automated auditing strategy is implemented using two separate Azure Functions:
+
+| Auditor | Frequency | Scope | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Continuous Auditor** | Every 5 minutes | Last 5 minutes of data | Provides near real-time detection of any tampering with recent data. |
+| **Full Auditor** | Monthly (Last day of the month) | Previous month's data | Performs a comprehensive historical validation of the entire previous month's data. |
 
 ### Local development
 

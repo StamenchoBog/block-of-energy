@@ -131,3 +131,94 @@ resource "azurerm_linux_function_app" "azure_function_hash_and_store" {
 
   tags = var.common_tags
 }
+
+# Function `full_temper_auditor`
+resource "azurerm_linux_function_app" "azure_function_full_temper_auditor" {
+  name                = "${var.prefix}-full-temper-auditor-${random_id.project_random_id.hex}"
+  location            = data.azurerm_resource_group.block_of_energy_rg.location
+  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+
+  storage_account_name       = azurerm_storage_account.functions_storage.name
+  storage_account_access_key = azurerm_storage_account.functions_storage.primary_access_key
+  service_plan_id            = azurerm_service_plan.functions_service_plan.id
+
+  functions_extension_version = "~4"
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  site_config {
+    application_stack {
+      node_version = "18"
+    }
+  }
+
+  app_settings = {
+    # CosmosDB configuration
+    # CosmoDB configuration
+    "COSMOSDB_CONNECTION" : azurerm_cosmosdb_account.cosmos_account.primary_mongodb_connection_string
+    "COSMOS_DB_NAME" : azurerm_cosmosdb_mongo_database.cosmos_mongodb.name,
+    "COSMOS_CONTAINER_NAME" : azurerm_cosmosdb_mongo_collection.collection.name,
+
+    # Hyperledger Fabric configuration
+    "FABRIC_MSP_ID" : "Org1MSP",
+    "FABRIC_CHANNEL_NAME" : "hashstoragechannel",
+    "FABRIC_CHAINCODE_NAME" : "hash",
+    "FABRIC_GATEWAY_ENDPOINT" : var.fabric_gateway_endpoint,
+    "FABRIC_CERT_PATH" : "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.fabric_cert_pem.id})",
+    "FABRIC_KEY_PATH" : "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.fabric_key_pem.id})",
+    "FABRIC_TLS_CERT_PATH" : "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.fabric_tls_cert_pem.id})",
+
+    # State storage for durable functions
+    "STATE_STORAGE_CONNECTION_STRING" : azurerm_storage_account.functions_storage.primary_connection_string,
+    "STATE_STORAGE_CONTAINER_NAME" : "audit-state"
+  }
+
+  tags = var.common_tags
+}
+
+# Function `latest_ingest_temper_auditor`
+resource "azurerm_linux_function_app" "azure_function_continuous_temper_auditor" {
+  name                = "${var.prefix}-continuous-auditor-${random_id.project_random_id.hex}"
+  location            = data.azurerm_resource_group.block_of_energy_rg.location
+  resource_group_name = data.azurerm_resource_group.block_of_energy_rg.name
+
+  storage_account_name       = azurerm_storage_account.functions_storage.name
+  storage_account_access_key = azurerm_storage_account.functions_storage.primary_access_key
+  service_plan_id            = azurerm_service_plan.functions_service_plan.id
+
+  functions_extension_version = "~4"
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  site_config {
+    application_stack {
+      node_version = "18"
+    }
+  }
+
+  app_settings = {
+    # CosmosDB configuration
+    "COSMOSDB_CONNECTION" : azurerm_cosmosdb_account.cosmos_account.primary_mongodb_connection_string,
+    "COSMOS_DB_NAME" : azurerm_cosmosdb_mongo_database.cosmos_mongodb.name,
+    "COSMOS_CONTAINER_NAME" : azurerm_cosmosdb_mongo_collection.collection.name,
+
+    # Hyperledger Fabric configuration
+    "FABRIC_MSP_ID" : "Org1MSP",
+    "FABRIC_CHANNEL_NAME" : "hashstoragechannel",
+    "FABRIC_CHAINCODE_NAME" : "hash",
+    "FABRIC_GATEWAY_ENDPOINT" : var.fabric_gateway_endpoint, # e.g., "peer0.org1.example.com:7051"
+    "FABRIC_CERT_PATH" : "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.fabric_cert_pem.id})",
+    "FABRIC_KEY_PATH" : "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.fabric_key_pem.id})",
+    "FABRIC_TLS_CERT_PATH" : "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.fabric_tls_cert_pem.id})",
+
+    # State storage for continuous auditor
+    "STATE_STORAGE_CONNECTION_STRING" : azurerm_storage_account.functions_storage.primary_connection_string,
+    "STATE_STORAGE_CONTAINER_NAME" : "audit-state"
+  }
+
+  tags = var.common_tags
+}
