@@ -7,8 +7,6 @@ dotenv.config();
 
 const API_URL = process.env.PUBLIC_API_URL;
 
-console.log('API_URL configured:', API_URL);
-
 export default defineConfig({
   vite: {
     plugins: [tailwindcss()],

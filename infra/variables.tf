@@ -87,6 +87,17 @@ variable "networking" {
   }
 }
 
+
+variable "kubernetes_version" {
+  type    = string
+  default = "1.29.2"
+}
+
+variable "authorized_ip_ranges" {
+  type    = list(string)
+  default = ["84.226.191.59", "77.28.75.231"]
+}
+
 variable "fabric_gateway_endpoint" {
   type = string
   # Local test-network
