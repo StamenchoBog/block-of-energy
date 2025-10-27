@@ -38,7 +38,7 @@ jobs:
         working-directory: ./infra/functions/process_iot_hub_message
 
       - name: Archive process_iot_hub_message
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: process_iot_hub_message_artifact
           path: ./infra/functions/process_iot_hub_message
@@ -49,7 +49,7 @@ jobs:
         working-directory: ./infra/functions/cosmos_db_writer
 
       - name: Archive cosmos_db_writer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cosmos_db_writer_artifact
           path: ./infra/functions/cosmos_db_writer
@@ -61,7 +61,7 @@ jobs:
         working-directory: ./infra/functions/continuous_temper_auditor
 
       - name: Archive continuous_temper_auditor
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: continuous_temper_auditor_artifact
           path: ./infra/functions/continuous_temper_auditor
@@ -73,7 +73,7 @@ jobs:
         working-directory: ./infra/functions/full_temper_auditor
 
       - name: Archive full_temper_auditor
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: full_temper_auditor_artifact
           path: ./infra/functions/full_temper_auditor
