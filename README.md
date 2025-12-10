@@ -53,7 +53,7 @@ The data flow can be broken down into the following steps:
     *   The integrity of the data is continuously verified by two automated **Azure Functions**:
         *   The `continuous_temper_auditor` runs every 5 minutes. It checks the most recent data to provide near real-time detection of any tampering.
         *   The `full_temper_auditor` runs once a month. It performs a comprehensive validation of the previous month's data, ensuring historical integrity.
-    *   These auditors likely work by re-calculating the hashes of the data stored in Cosmos DB and comparing them with the hashes stored on the blockchain.
+    *   These auditors work by re-calculating the hashes of the data stored in Cosmos DB and comparing them with the hashes stored on the blockchain.
 
 ## Key Features
 
