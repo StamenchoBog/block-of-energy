@@ -1,0 +1,23 @@
+---
+apiVersion: hlf.kungfusoftware.es/v1alpha1
+kind: FabricFollowerChannel
+metadata:
+  name: energy-data-channel-energy-provider
+spec:
+  anchorPeers:
+    - host: peer0-energy-provider.localho.st
+      port: 443
+  hlfIdentity:
+    secretKey: energy-providermsp.yaml
+    secretName: energy-wallet
+    secretNamespace: default
+  mspId: EnergyProviderMSP
+  name: energy-data-channel
+  externalPeersToJoin: []
+  orderers:
+    - certificate: |
+$ORDERER0_TLS_CERT
+      url: grpcs://energy-ord-node1.default:7050
+  peersToJoin:
+    - name: energy-provider-peer0
+      namespace: default

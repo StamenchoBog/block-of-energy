@@ -1,1 +1,0 @@
-This is a dummy file. Place the channeltx_base64 file in this directory..

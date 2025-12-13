@@ -1,0 +1,93 @@
+---
+apiVersion: hlf.kungfusoftware.es/v1alpha1
+kind: FabricMainChannel
+metadata:
+  name: energy-data-channel
+spec:
+  name: energy-data-channel
+  adminOrdererOrganizations:
+    - mspID: EnergyOrdererMSP
+  adminPeerOrganizations:
+    - mspID: EnergyProviderMSP
+  channelConfig:
+    application:
+      acls: null
+      capabilities:
+        - V2_0
+        - V2_5
+      policies: null
+    capabilities:
+      - V2_0
+    orderer:
+      batchSize:
+        absoluteMaxBytes: 1048576
+        maxMessageCount: 10
+        preferredMaxBytes: 524288
+      batchTimeout: 2s
+      capabilities:
+        - V2_0
+      etcdRaft:
+        options:
+          electionTick: 10
+          heartbeatTick: 1
+          maxInflightBlocks: 5
+          snapshotIntervalSize: 16777216
+          tickInterval: 500ms
+      ordererType: etcdraft
+      policies: null
+      state: STATE_NORMAL
+    policies: null
+  externalOrdererOrganizations: []
+  externalPeerOrganizations: []
+  peerOrganizations:
+    - mspID: EnergyProviderMSP
+      caName: "energy-provider-ca"
+      caNamespace: "default"
+
+  identities:
+    EnergyOrdererMSP:
+      secretKey: energy-orderermsp.yaml
+      secretName: energy-wallet
+      secretNamespace: default
+    EnergyOrdererMSP-tls:
+      secretKey: energy-orderermsp.yaml
+      secretName: energy-wallet
+      secretNamespace: default
+    EnergyOrdererMSP-sign:
+      secretKey: energy-orderermspsign.yaml
+      secretName: energy-wallet
+      secretNamespace: default
+    EnergyProviderMSP:
+      secretKey: energy-providermsp.yaml
+      secretName: energy-wallet
+      secretNamespace: default
+
+  ordererOrganizations:
+    - caName: "energy-orderer-ca"
+      caNamespace: "default"
+      externalOrderersToJoin:
+        - host: energy-ord-node1.default
+          port: 7053
+        - host: energy-ord-node2.default
+          port: 7053
+        - host: energy-ord-node3.default
+          port: 7053
+      mspID: EnergyOrdererMSP
+      ordererEndpoints:
+        - orderer0-energy.localho.st:443
+        - orderer1-energy.localho.st:443
+        - orderer2-energy.localho.st:443
+      orderersToJoin: []
+  orderers:
+    - host: orderer0-energy.localho.st
+      port: 443
+      tlsCert: |
+$ORDERER0_TLS_CERT
+    - host: orderer1-energy.localho.st
+      port: 443
+      tlsCert: |
+$ORDERER1_TLS_CERT
+    - host: orderer2-energy.localho.st
+      port: 443
+      tlsCert: |
+$ORDERER2_TLS_CERT
