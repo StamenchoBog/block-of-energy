@@ -9,7 +9,7 @@ interface Props {
 const { title, activeNav } = Astro.props;
 ---
 <BaseLayout title={title} activeNav={activeNav}>
-    <main class="p-4 sm:p-6 lg:p-8">
+    <main class="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
         <slot />
     </main>
 </BaseLayout>

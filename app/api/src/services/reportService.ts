@@ -1,7 +1,7 @@
 import { Collection } from 'mongodb';
 import logger from '../config/logger';
-import { EnergyReading, HourlyData, DailyDataPoint, ReportParams, ReportResponse } from '../models/energy';
-import {getDatabase} from "../config/database";
+import { DailyDataPoint, ReportParams, ReportResponse } from '../models/energy';
+import { getDatabase } from "../config/database";
 
 export class ReportService {
     async generateReport(
@@ -60,124 +60,52 @@ export class ReportService {
             end: endDate.toISOString()
         });
 
-        // Use projection to limit fields returned
-        const readings = await collection.find({
-            "payload.ENERGY": {$exists: true},
-            "payload.timestamp": {
-                $gte: startDate.toISOString(),
-                $lte: endDate.toISOString()
-            }
-        }, {
-            projection: {
-                "payload.ENERGY.Today": 1,
-                "payload.ENERGY.Power": 1,
-                "payload.ENERGY.Voltage": 1,
-                "payload.ENERGY.Current": 1,
-                "payload.ENERGY.Factor": 1,
-                "payload.timestamp": 1
-            }
-        }).toArray() as unknown as EnergyReading[];
-
-        readings.sort((a, b) => {
-            return new Date(a.payload.timestamp).getTime() - new Date(b.payload.timestamp).getTime();
-        });
-
-        // Group readings by hour
-        const hourlyData: HourlyData = {};
-        readings.forEach((reading: EnergyReading) => {
-            const timestamp = new Date(reading.payload.timestamp);
-            const hour = timestamp.getUTCHours();
-
-            if (!hourlyData[hour]) {
-                hourlyData[hour] = {
-                    readings: [],
-                    powerSum: 0,
-                    powerCount: 0,
-                    voltageSum: 0,
-                    voltageCount: 0,
-                    currentSum: 0,
-                    currentCount: 0,
-                    factorSum: 0,
-                    factorCount: 0
-                };
-            }
-
-            hourlyData[hour].readings.push(reading);
-
-            if (reading.payload.ENERGY.Power !== undefined) {
-                hourlyData[hour].powerSum += reading.payload.ENERGY.Power;
-                hourlyData[hour].powerCount++;
-            }
-
-            // Track voltage metrics
-            if (reading.payload.ENERGY.Voltage !== undefined) {
-                hourlyData[hour].voltageSum += reading.payload.ENERGY.Voltage;
-                hourlyData[hour].voltageCount++;
-            }
-
-            // Track current metrics
-            if (reading.payload.ENERGY.Current !== undefined) {
-                hourlyData[hour].currentSum += reading.payload.ENERGY.Current;
-                hourlyData[hour].currentCount++;
-            }
-
-            // Track power factor metrics
-            if (reading.payload.ENERGY.Factor !== undefined) {
-                hourlyData[hour].factorSum += reading.payload.ENERGY.Factor;
-                hourlyData[hour].factorCount++;
-            }
-        });
-
-        // Calculate energy consumption for each hour
-        let previousHourMaxEnergy = 0;
-        const result = [];
-
-        for (let hour = 0; hour < 24; hour++) {
-            if (!hourlyData[hour]) continue;
-
-            const hourReadings = hourlyData[hour].readings;
-            if (hourReadings.length === 0) continue;
-
-            // Get max energy reading for this hour
-            let maxEnergy = 0;
-            hourReadings.forEach((r: EnergyReading) => {
-                if (r.payload.ENERGY.Today > maxEnergy) {
-                    maxEnergy = r.payload.ENERGY.Today;
+        const hourlyData = await collection.aggregate([
+            {
+                $match: {
+                    "payload.ENERGY": { $exists: true },
+                    "payload.timestamp": {
+                        $gte: startDate.toISOString(),
+                        $lte: endDate.toISOString()
+                    }
                 }
-            });
+            },
+            {
+                $group: {
+                    _id: { $hour: { $toDate: "$payload.timestamp" } },
+                    maxEnergy: { $max: "$payload.ENERGY.Today" },
+                    peakPower: { $max: "$payload.ENERGY.Power" },
+                    avgVoltage: { $avg: "$payload.ENERGY.Voltage" },
+                    avgCurrent: { $avg: "$payload.ENERGY.Current" },
+                    avgFactor: { $avg: "$payload.ENERGY.Factor" }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]).toArray();
 
-            // Calculate consumption
+        // Calculate energy consumption (difference between hours)
+        let previousMaxEnergy = 0;
+        const result = hourlyData.map((hourData: any, index: number) => {
             let hourlyConsumption: number;
-            if (hour === 0 || previousHourMaxEnergy === 0) {
-                hourlyConsumption = maxEnergy;
+            if (index === 0 || hourData.maxEnergy < previousMaxEnergy) {
+                hourlyConsumption = hourData.maxEnergy;
             } else {
-                hourlyConsumption = Math.max(0, maxEnergy - previousHourMaxEnergy);
+                hourlyConsumption = Math.max(0, hourData.maxEnergy - previousMaxEnergy);
             }
+            previousMaxEnergy = hourData.maxEnergy;
 
-            previousHourMaxEnergy = maxEnergy;
-
-            const avgVoltage = hourlyData[hour].voltageCount > 0 ?
-                hourlyData[hour].voltageSum / hourlyData[hour].voltageCount : 0;
-
-            const avgCurrent = hourlyData[hour].currentCount > 0 ?
-                hourlyData[hour].currentSum / hourlyData[hour].currentCount : 0;
-
-            const avgFactor = hourlyData[hour].factorCount > 0 ?
-                hourlyData[hour].factorSum / hourlyData[hour].factorCount : 0;
-
-
-            result.push({
-                hour,
-                energy: hourlyConsumption,
-                peakPower: Math.max(...hourReadings.map((r: EnergyReading) => r.payload.ENERGY.Power || 0)),
-                voltage: Math.round(avgVoltage * 10) / 10,
-                current: Math.round(avgCurrent * 1000) / 1000,
-                factor: Math.round(avgFactor * 100) / 100
-            });
-        }
+            return {
+                hour: hourData._id,
+                energy: Math.round(hourlyConsumption * 100) / 100,
+                peakPower: Math.round((hourData.peakPower || 0) * 100) / 100,
+                voltage: Math.round((hourData.avgVoltage || 0) * 10) / 10,
+                current: Math.round((hourData.avgCurrent || 0) * 1000) / 1000,
+                factor: Math.round((hourData.avgFactor || 0) * 100) / 100
+            };
+        });
 
         logger.info(`Generated daily report with ${result.length} hourly data points`);
-        return result.sort((a, b) => a.hour - b.hour);
+        return result;
     }
 
     private async generateWeeklyReport(collection: Collection, weekNum: number, year: number): Promise<any[]> {

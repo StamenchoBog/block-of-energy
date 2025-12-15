@@ -1,0 +1,161 @@
+# Block of Energy - Local Development Stack
+# Start all services: docker compose up -d
+# Stop all services: docker compose down
+# View logs: docker compose logs -f
+
+services:
+  # ===================
+  # Infrastructure
+  # ===================
+
+  # MQTT Broker for sensor data
+  mosquitto:
+    image: eclipse-mosquitto:2.0.22
+    container_name: mosquitto-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+    volumes:
+      - ./forward-proxy/mosquitto/conf:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    networks:
+      - block-of-energy
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # MongoDB (replaces Azure Cosmos DB for local development)
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=telemetry-db
+    networks:
+      - block-of-energy
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===================
+  # Application
+  # ===================
+
+  # API Server
+  api:
+    build:
+      context: ./app/api
+      dockerfile: Dockerfile
+    container_name: api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=telemetry-db
+      - PORT=3000
+      - NODE_ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - block-of-energy
+
+  # Frontend (Astro)
+  frontend:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "4321:8080"
+    environment:
+      - PUBLIC_API_URL=http://api:3000
+    depends_on:
+      - api
+    networks:
+      - block-of-energy
+
+  # ===================
+  # Data Pipeline
+  # ===================
+
+  # MQTT to MongoDB bridge
+  mqtt-processor:
+    build:
+      context: ./tools/local-mqtt-processor
+      dockerfile: Dockerfile
+    container_name: mqtt-processor
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=mqtt://mosquitto:1883
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DATABASE=telemetry-db
+      - MONGODB_COLLECTION=sensor-measurements
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - block-of-energy
+
+  # Energy Data Simulator (generates test data)
+  simulator:
+    build:
+      context: ./tools/energy-data-simulator
+      dockerfile: Dockerfile
+    container_name: energy-simulator
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=mqtt://mosquitto:1883
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      mqtt-processor:
+        condition: service_started
+    networks:
+      - block-of-energy
+
+  # ===================
+  # Azure Integration (Optional)
+  # ===================
+
+  # Azure MQTT Forwarder (only for Azure integration)
+  mqtt-forwarder:
+    build: ./forward-proxy/mqtt-forwarder
+    container_name: mqtt-forwarder
+    restart: unless-stopped
+    profiles:
+      - azure
+    depends_on:
+      - mosquitto
+    environment:
+      - ID_SCOPE=${AZURE_DPS_ID_SCOPE}
+      - ENROLLMENT_ID=${AZURE_DPS_ENROLLMENT_ID}
+      - DEVICE_ID=${AZURE_DEVICE_ID}
+      - GROUP_PRIMARY_KEY=${AZURE_DPS_ENROLLMENT_GROUP_PRIMARY_KEY}
+      - MQTT_USER=${LOCAL_MQTT_USER}
+      - MQTT_PASS=${LOCAL_MQTT_PASSWORD}
+    networks:
+      - block-of-energy
+
+networks:
+  block-of-energy:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  mosquitto-data:
+  mosquitto-log:

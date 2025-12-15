@@ -1,0 +1,34 @@
+{
+  "name": "energy-data-simulator",
+  "version": "1.0.0",
+  "description": "Enhanced energy data simulator for Block of Energy platform with blockchain integration",
+  "main": "enhanced-simulator.js",
+  "scripts": {
+    "start": "node enhanced-simulator.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "energy",
+    "mqtt",
+    "blockchain",
+    "iot",
+    "simulation",
+    "tasmota"
+  ],
+  "author": "Block of Energy Team",
+  "license": "MIT",
+  "dependencies": {
+    "mqtt": "^5.3.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/block-of-energy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/block-of-energy/issues"
+  },
+  "homepage": "https://github.com/your-org/block-of-energy#readme"
+}

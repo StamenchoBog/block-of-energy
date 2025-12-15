@@ -2,54 +2,82 @@
 
 ## Description
 
-In order to forward the message(s) from a locally deployed MQTT broker (ex. Eclipse Mosquitto) to an Azure IoT Hub, a
-separate "forwarder" or service is required to bridge the two.
-Good thing about a forwarder is that it could be deployed and connect any locally deployed MQTT broker with Azure IoT Hub
-which abstracts the complexity of managing each local MQTT broker separately.
+This directory contains the local development infrastructure for the Block of Energy platform, including:
+- **Eclipse Mosquitto**: Local MQTT broker for sensor data
+- **MongoDB**: Local database (replaces Azure Cosmos DB)
+- **MQTT Forwarder**: Optional bridge to Azure IoT Hub (for Azure integration)
 
-## Architecture
-
-```
-Local MQTT Broker -> MQTT Forwarder -> Azure IoT Hub
-```
-
-## Build
-
-TO build the image for the Forwarder just run:
-```bash
-docker build -t mqtt-forwarder:latest .
-```
-
-## Development
-
-In order to test the development of the Forwarder service, there is a mock Mosquitto container that will
-run with the Forwarder in the `docker-compose.yaml` file.
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Azure IoT Hub configured with DPS
-- Python 3.12+ (for local development)
+## Local Development (No Azure Required)
 
 ### Quick Start
 
-1. Put the needed environment variables for development in a `.env` file located in the `mqtt-bridge` folder: 
-   - `AZURE_DPS_ID_SCOPE` - The ID scope of the IoT Hub DPS (Device Provisioning Service) provisioned in Azure.
-   - `AZURE_DPS_ENROLLMENT_ID` - The enrollment ID of the enrollment group created in the IoT Hub DPS.
-   - `AZURE_DEVICE_ID` - The device ID (name) under which the newly registered device will be seen in IoT Hub. Example: `mqtt-broker-0001`.
-   - `AZURE_DPS_ENROLLMENT_GROUP_PRIMARY_KEY` - The Primary Key used for authentication against the DPS service.
-   - `LOCAL_MQTT_USER` - The username configured on the local MQTT broker.
-   - `LOCAL_MQTT_PASSWORD` - The password configured on the local MQTT broker.
-
-2. Start the bridge services:
+Start the local infrastructure (MQTT broker + MongoDB):
 
 ```bash
 docker compose up -d
 ```
 
-3. View logs of containers
+This starts:
+- **Mosquitto MQTT Broker** on `localhost:1883`
+- **MongoDB** on `localhost:27017`
+
+### Verify Services
 
 ```bash
-docker compose logs -f mqtt-forwarder 
+# Check running containers
+docker compose ps
+
+# View logs
 docker compose logs -f mosquitto
+docker compose logs -f mongodb
+```
+
+### Stop Services
+
+```bash
+docker compose down
+
+# To also remove data volumes:
+docker compose down -v
+```
+
+## Azure Integration (Optional)
+
+If you want to forward data to Azure IoT Hub, use the `azure` profile:
+
+### Prerequisites
+
+Create a `.env` file with Azure credentials:
+
+```env
+AZURE_DPS_ID_SCOPE=your-id-scope
+AZURE_DPS_ENROLLMENT_ID=your-enrollment-id
+AZURE_DEVICE_ID=mqtt-broker-0001
+AZURE_DPS_ENROLLMENT_GROUP_PRIMARY_KEY=your-primary-key
+LOCAL_MQTT_USER=your-mqtt-user
+LOCAL_MQTT_PASSWORD=your-mqtt-password
+```
+
+### Start with Azure Forwarder
+
+```bash
+docker compose --profile azure up -d
+```
+
+## Architecture
+
+### Local Development
+```
+Energy Sensors (Simulator) -> MQTT Broker (localhost:1883) -> API -> MongoDB (localhost:27017)
+```
+
+### Azure Integration
+```
+Local MQTT Broker -> MQTT Forwarder -> Azure IoT Hub -> Azure Functions -> Cosmos DB
+```
+
+## Build (for Azure Forwarder only)
+
+```bash
+docker build -t mqtt-forwarder:latest ./mqtt-forwarder
 ```

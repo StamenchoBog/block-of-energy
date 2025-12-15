@@ -6,89 +6,85 @@ class DashboardService {
     async getDashboardData(): Promise<DashboardSummary> {
         const db = await getDatabase();
         const collection = db.collection('sensor-measurements');
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
 
-        // Get the latest device data
-        const latestDevice = await collection.findOne(
-            { "payload.ENERGY": { $exists: true } },
-            { sort: { processingTimestamp: -1 } }
-        ) as TasmotaDevice | null;
+        // Use $facet to combine all queries into a single database round-trip
+        const [result] = await collection.aggregate([
+            {
+                $match: {
+                    "payload.ENERGY": { $exists: true },
+                    processingTimestamp: { $gte: sevenDaysAgo.toISOString() }
+                }
+            },
+            {
+                $facet: {
+                    // Get latest device reading
+                    latest: [
+                        { $sort: { processingTimestamp: -1 } },
+                        { $limit: 1 }
+                    ],
+                    // Get 24-hour hourly data
+                    hourlyData: [
+                        { $match: { processingTimestamp: { $gte: oneDayAgo.toISOString() } } },
+                        { $sort: { processingTimestamp: 1 } },
+                        { $limit: 1440 },
+                        {
+                            $project: {
+                                timestamp: { $ifNull: ["$payload.timestamp", "$processingTimestamp"] },
+                                power: "$payload.ENERGY.Power",
+                                energy: "$payload.ENERGY.Today"
+                            }
+                        }
+                    ],
+                    // Get daily aggregations for 7 days
+                    dailySummary: [
+                        {
+                            $group: {
+                                _id: { $substr: ["$processingTimestamp", 0, 10] },
+                                avgPower: { $avg: "$payload.ENERGY.Power" },
+                                maxPower: { $max: "$payload.ENERGY.Power" },
+                                minPower: { $min: "$payload.ENERGY.Power" },
+                                energyConsumed: { $max: "$payload.ENERGY.Today" },
+                                readingCount: { $sum: 1 }
+                            }
+                        },
+                        { $sort: { _id: 1 } }
+                    ],
+                    // Get today's detailed data
+                    todayData: [
+                        { $match: { processingTimestamp: { $gte: todayStart.toISOString() } } },
+                        { $sort: { processingTimestamp: 1 } },
+                        { $limit: 1440 },
+                        {
+                            $project: {
+                                timestamp: {
+                                    $ifNull: [
+                                        "$payload.TIME.UTC",
+                                        { $ifNull: ["$payload.timestamp", "$processingTimestamp"] }
+                                    ]
+                                },
+                                power: "$payload.ENERGY.Power",
+                                voltage: "$payload.ENERGY.Voltage",
+                                energy: "$payload.ENERGY.Today"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]).toArray();
+
+        const latestDevice = result.latest[0] as TasmotaDevice | undefined;
 
         if (!latestDevice || !latestDevice.payload.ENERGY) {
             throw new Error('No energy data found');
         }
 
-        // Get hourly data
-        const oneDayAgo = new Date();
-        oneDayAgo.setHours(oneDayAgo.getHours() - 24);
-        const oneDayAgoStr = oneDayAgo.toISOString();
-
-        const hourlyData = await collection.find({
-            "payload.ENERGY": { $exists: true },
-            $or: [
-                { "payload.timestamp": { $gte: oneDayAgoStr } },
-                { "processingTimestamp": { $gte: oneDayAgoStr } }
-            ]
-        }, {
-            sort: { "processingTimestamp": 1 },
-            limit: 1440
-        }).toArray() as TasmotaDevice[];
-
-        // Get daily aggregations
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sevenDaysAgoStr = sevenDaysAgo.toISOString();
-
-        const dailyAggregation = await collection.aggregate([
-            {
-                $match: {
-                    "payload.ENERGY": { $exists: true },
-                    $or: [
-                        { processingTimestamp: { $gte: sevenDaysAgo } },
-                        { processingTimestamp: { $gte: sevenDaysAgoStr } }
-                    ]
-                }
-            },
-            {
-                $addFields: {
-                    dateString: {
-                        $substr: [
-                            { $ifNull: ["$processingTimestamp", new Date().toISOString()] },
-                            0,
-                            10
-                        ]
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: "$dateString",
-                    avgPower: { $avg: "$payload.ENERGY.Power" },
-                    maxPower: { $max: "$payload.ENERGY.Power" },
-                    minPower: { $min: "$payload.ENERGY.Power" },
-                    energyConsumed: { $max: "$payload.ENERGY.Today" },
-                    readingCount: { $sum: 1 }
-                }
-            },
-            { $sort: { _id: 1 } }
-        ]).toArray();
-
-        // Get today's data
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayStr = today.toISOString();
-
-        const todayData = await collection.find({
-            "payload.ENERGY": { $exists: true },
-            $or: [
-                { processingTimestamp: { $gte: today } },
-                { processingTimestamp: { $gte: todayStr } }
-            ]
-        }, {
-            sort: { processingTimestamp: 1 },
-            limit: 1440
-        }).toArray() as TasmotaDevice[];
-
         const energy = latestDevice.payload.ENERGY;
+
         const summary: DashboardSummary = {
             power: {
                 value: energy.Power.toString(),
@@ -102,19 +98,19 @@ class DashboardService {
             reactivePower: { value: energy.ReactivePower.toString() },
             energyTotal: { value: energy.Total.toString() },
 
-            hourlyPowerData: hourlyData.map((item: TasmotaDevice) => ({
-                timestamp: new Date(item.payload.timestamp || item.processingTimestamp),
-                power: item.payload.ENERGY!.Power,
-                energy: item.payload.ENERGY!.Today
+            hourlyPowerData: result.hourlyData.map((item: any) => ({
+                timestamp: new Date(item.timestamp),
+                power: item.power,
+                energy: item.energy
             })),
 
-            dailySummary: dailyAggregation,
+            dailySummary: result.dailySummary,
 
-            todayData: todayData.map((item: TasmotaDevice) => ({
-                timestamp: new Date(item.payload.TIME ? item.payload.TIME.UTC || item.processingTimestamp : item.processingTimestamp),
-                power: item.payload.ENERGY!.Power,
-                voltage: item.payload.ENERGY!.Voltage,
-                energy: item.payload.ENERGY!.Today
+            todayData: result.todayData.map((item: any) => ({
+                timestamp: new Date(item.timestamp),
+                power: item.power,
+                voltage: item.voltage,
+                energy: item.energy
             }))
         };
 

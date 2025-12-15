@@ -71,6 +71,10 @@ The repository is organized into the following directories:
 - `infra/`: Includes all Terraform scripts for provisioning Azure infrastructure, as well as the source code for the Azure Functions.
 - `hyperledger-fabric/`: Holds the configuration files and chaincode for the Hyperledger Fabric blockchain network.
 - `forward-proxy/`: Contains the implementation of the MQTT forwarder proxy.
+- `tools/`: Development and testing utilities:
+  - `energy-data-simulator/`: MQTT simulator for generating test energy data
+  - `local-mqtt-processor/`: Bridge between MQTT and MongoDB for local development
+  - `verify-hash/`: Tool for verifying data hashes against the blockchain
 - `docs/`: Stores project documentation, including architecture diagrams and application screenshots.
 - `.github/`: Contains CI/CD workflow definitions for GitHub Actions.
 
@@ -131,15 +135,59 @@ The project utilizes GitHub Actions for continuous integration and continuous de
 - **Deployment of Azure Functions:** Automatically deploys the Azure Functions on pushes to the `main` branch.
 - **Security Scanning:** Integrates CodeQL and tfsec to perform static analysis and identify potential security vulnerabilities in the codebase and infrastructure configuration.
 
-## Local development
+## Local Development
 
-#### Pre-requisites
+Run the entire platform locally without Azure dependencies using Docker Compose.
 
-- Python 3.12 and above
-- Docker
-- Docker Compose
-- OpenTofu
-- Azure Tools CLI
+### Prerequisites
+
+- **Docker** and **Docker Compose**
+
+### Quick Start
+
+```bash
+# Start everything (MongoDB, MQTT, API, Frontend, Simulator)
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+That's it! All services will start automatically:
+- MongoDB and Mosquitto MQTT broker (infrastructure)
+- MQTT Processor (bridges sensor data to MongoDB)
+- API Server (Express.js backend)
+- Frontend (Astro.js)
+- Energy Simulator (generates test data)
+
+### Access the Application
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:4321 |
+| API | http://localhost:3000 |
+| MongoDB | mongodb://localhost:27017 |
+| MQTT Broker | mqtt://localhost:1883 |
+
+### Stop Services
+
+```bash
+docker compose down
+
+# To also remove volumes (reset data)
+docker compose down -v
+```
+
+### Optional: Blockchain Integration
+
+For local blockchain development with Hyperledger Fabric:
+
+```bash
+cd hyperledger-fabric
+./bootup.sh
+```
+
+See [hyperledger-fabric/README.md](./hyperledger-fabric/README.md) for detailed setup.
 
 ## Application Screenshots
 

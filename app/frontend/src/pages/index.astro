@@ -1,43 +1,8 @@
 ---
 import DashboardLayout from '../components/layouts/DashboardLayout.astro';
-import StatCard from '../components/common/StatCard.astro';
-import EnergyChart from '../components/charts/EnergyChart';
-import { fetchDashboardData } from '../lib/apiService';
-
-// Get real data from the API
-const data = await fetchDashboardData();
-
-// Format timestamp for display
-const lastUpdated = data?.power?.processingTimestamp
-	? new Date(data.power.processingTimestamp).toLocaleString([],
-		{hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false})
-	: 'N/A';
+import DashboardContent from '../components/dashboard/DashboardContent';
 ---
 
 <DashboardLayout title="Energy Dashboard" activeNav='overview'>
-	<div class="mb-6">
-		<h1 class="text-3xl font-bold">Overview</h1>
-		<p class="text-gray-500">Last updated: {lastUpdated}</p>
-	</div>
-
-	<!-- Statistics Grid -->
-	<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-		<StatCard title="Power" value={data?.power?.value || '0'} unit="W" description="Instantaneous" />
-		<StatCard title="Voltage" value={data?.voltage?.value || '0'} unit="V" />
-		<StatCard title="Current" value={data?.current?.value || '0'} unit="A" />
-		<StatCard title="Energy Today" value={data?.energyToday?.value || '0'} unit="kWh" />
-		<StatCard title="Power Factor" value={data?.powerFactor?.value || '0'} unit="" />
-	</div>
-
-	<!-- Main Chart -->
-	<div class="mb-8">
-		<EnergyChart client:visible data={data?.hourlyPowerData || []} />
-	</div>
-
-	<!-- More Detailed Stats -->
-	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-		<StatCard title="Apparent Power" value={data?.apparentPower?.value || '0'} unit="VA" />
-		<StatCard title="Reactive Power" value={data?.reactivePower?.value || '0'} unit="VAr" />
-		<StatCard title="Total Consumption" value={data?.energyTotal?.value || '0'} unit="kWh" />
-	</div>
+	<DashboardContent client:load />
 </DashboardLayout>

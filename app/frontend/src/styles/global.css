@@ -1,2 +1,360 @@
+/* Import Inter font for modern typography */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @import "tailwindcss";
 @plugin "daisyui";
+
+/* Global styles for modern minimalistic design */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv03', 'cv04', 'cv11';
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Modern focus styles */
+*:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  border-radius: 4px;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Modern card styles */
+.card-modern {
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid rgb(229 231 235);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.card-modern:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+/* Data visualization styles */
+.metric-card {
+  background-color: white;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.metric-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+.metric-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: rgb(17 24 39);
+  letter-spacing: -0.025em;
+}
+
+.metric-change.positive {
+  color: rgb(34 197 94);
+}
+
+.metric-change.negative {
+  color: rgb(239 68 68);
+}
+
+.metric-change.neutral {
+  color: rgb(107 114 128);
+}
+
+/* Chart container styles */
+.chart-container {
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  padding: 1.5rem;
+  border: 1px solid rgb(229 231 235);
+}
+
+/* Loading states */
+.loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgb(229 231 235);
+  border-top: 2px solid rgb(34 197 94);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error states */
+.error-message {
+  background-color: rgb(254 242 242);
+  border: 1px solid rgb(252 165 165);
+  color: rgb(185 28 28);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+/* Success states */
+.success-message {
+  background-color: rgb(240 253 244);
+  border: 1px solid rgb(187 247 208);
+  color: rgb(34 197 94);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+/* Modern button styles */
+.btn-modern {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.btn-modern:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.btn-modern:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-modern:active {
+  opacity: 0.9;
+}
+
+.btn-modern.primary {
+  background-color: rgb(37 99 235);
+  color: white;
+}
+
+.btn-modern.primary:hover {
+  background-color: rgb(29 78 216);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-modern.secondary {
+  background-color: rgb(243 244 246);
+  color: rgb(55 65 81);
+  border: 1px solid rgb(209 213 219);
+}
+
+.btn-modern.secondary:hover {
+  background-color: rgb(229 231 235);
+}
+
+.btn-modern.energy {
+  background-color: rgb(34 197 94);
+  color: white;
+}
+
+.btn-modern.energy:hover {
+  background-color: rgb(22 163 74);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-modern.solar {
+  background-color: rgb(234 179 8);
+  color: white;
+}
+
+.btn-modern.solar:hover {
+  background-color: rgb(202 138 4);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Modern table styles */
+.table-modern {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-modern th {
+  background-color: rgb(249 250 251);
+  text-align: left;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(107 114 128);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-modern td {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: rgb(17 24 39);
+  border-top: 1px solid rgb(229 231 235);
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none;
+  }
+  
+  /* Better mobile spacing */
+  .metric-card {
+    padding: 1rem;
+  }
+  
+  .metric-value {
+    font-size: 1.5rem;
+  }
+  
+  /* Mobile chart adjustments */
+  .chart-container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Tablet adjustments */
+  .grid-responsive {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Smooth animations for better UX */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Modern glassmorphism effect */
+.glass-effect {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Modern gradient backgrounds */
+.gradient-energy {
+  background: linear-gradient(to bottom right, rgb(59 130 246), rgb(34 197 94), rgb(34 197 94));
+}
+
+.gradient-solar {
+  background: linear-gradient(to bottom right, rgb(234 179 8), rgb(202 138 4), rgb(202 138 4));
+}
+
+/* Modern focus states */
+.focus-modern:focus {
+  box-shadow: 0 0 0 2px rgb(59 130 246);
+  outline: none;
+}
+
+/* Modern hover states */
+.hover-lift {
+  transition: all 0.3s;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+/* Remove DaisyUI @property rule */
+@layer base {
+  /* Override DaisyUI styles */
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4rem; /* Account for fixed nav */
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .metric-card {
+    box-shadow: none;
+    border: 1px solid rgb(209 213 219);
+  }
+  
+  nav {
+    display: none !important;
+  }
+}

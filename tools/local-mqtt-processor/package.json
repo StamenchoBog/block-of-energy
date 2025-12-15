@@ -1,0 +1,14 @@
+{
+  "name": "local-mqtt-processor",
+  "version": "1.0.0",
+  "description": "Local MQTT to MongoDB bridge for development",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mongodb": "^7.0.0",
+    "mqtt": "^5.14.1"
+  }
+}

@@ -1,26 +1,21 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 
-export default function ReportControls({
-                                           initialReportType,
-                                           initialDate,
-                                           initialWeek,
-                                           initialMonth,
-                                           initialYear,
-                                           onGenerateReport,
-                                           isLoading
-                                       }) {
+const ReportControls = memo(function ReportControls({
+    initialReportType,
+    initialDate,
+    initialWeek,
+    initialMonth,
+    initialYear,
+    onGenerateReport,
+    isLoading
+}) {
     const [reportType, setReportType] = useState(initialReportType);
     const [date, setDate] = useState(initialDate);
     const [week, setWeek] = useState(initialWeek);
     const [month, setMonth] = useState(initialMonth);
     const [year, setYear] = useState(initialYear);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        generateReport();
-    };
-
-    const generateReport = () => {
+    const generateReport = useCallback(() => {
         const params = { type: reportType };
 
         if (reportType === 'daily') params.date = date;
@@ -35,9 +30,9 @@ export default function ReportControls({
         if (reportType === 'yearly') params.year = year;
 
         onGenerateReport(params);
-    };
+    }, [reportType, date, week, month, year, onGenerateReport]);
 
-    const handleDownloadCSV = () => {
+    const handleDownloadCSV = useCallback(() => {
         const params = new URLSearchParams();
         params.set('type', reportType);
 
@@ -53,145 +48,115 @@ export default function ReportControls({
         if (reportType === 'yearly') params.set('year', year);
 
         window.location.href = `/api/report/download?${params.toString()}`;
-    };
+    }, [reportType, date, week, month, year]);
+
+    const reportTypes = ['daily', 'weekly', 'monthly', 'yearly'];
 
     return (
-        <form onSubmit={handleSubmit} className="bg-white p-4 rounded-lg shadow mb-6">
-            <div className="p-4 bg-slate-50 rounded-xl shadow mb-6">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="flex-grow">
-                        <span className="font-bold mr-4 text-slate-700">Select Report Type:</span>
-                        <div className="join">
-                            <button
-                                type="button"
-                                onClick={() => setReportType('daily')}
-                                className={`btn join-item border-slate-300 ${reportType === 'daily' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
-                            >Daily</button>
-                            <button
-                                type="button"
-                                onClick={() => setReportType('weekly')}
-                                className={`btn join-item border-slate-300 ${reportType === 'weekly' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
-                            >Weekly</button>
-                            <button
-                                type="button"
-                                onClick={() => setReportType('monthly')}
-                                className={`btn join-item border-slate-300 ${reportType === 'monthly' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
-                            >Monthly</button>
-                            <button
-                                type="button"
-                                onClick={() => setReportType('yearly')}
-                                className={`btn join-item border-slate-300 ${reportType === 'yearly' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
-                            >Yearly</button>
-                        </div>
-                    </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                {/* Report Type Toggle */}
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                    {reportTypes.map((type) => (
+                        <button
+                            key={type}
+                            type="button"
+                            onClick={() => setReportType(type)}
+                            className={`px-4 py-2 text-sm font-medium transition-colors
+                                ${reportType === type
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-white text-gray-600 hover:bg-gray-50'}
+                                ${type !== 'daily' ? 'border-l border-gray-200' : ''}
+                            `}
+                        >
+                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </button>
+                    ))}
+                </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mt-4 sm:mt-0">
-                        {/* Date pickers */}
-                        <div className="w-full sm:w-auto">
-                            {reportType === 'daily' && (
-                                <div>
-                                    <label htmlFor="date-picker" className="block text-sm font-medium text-slate-700 mb-1">Select Date</label>
-                                    <input
-                                        id="date-picker"
-                                        type="date"
-                                        name="date"
-                                        className="input w-full sm:w-auto border-slate-300 bg-white focus:ring-slate-500 focus:border-slate-500"
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
-                                    />
-                                </div>
-                            )}
+                {/* Date Inputs */}
+                <div className="flex items-center gap-3">
+                    {reportType === 'daily' && (
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    )}
 
-                            {reportType === 'weekly' && (
-                                <div>
-                                    <label htmlFor="week-picker" className="block text-sm font-medium text-slate-700 mb-1">Select Week</label>
-                                    <input
-                                        id="week-picker"
-                                        type="week"
-                                        name="week"
-                                        className="input w-full sm:w-auto border-slate-300 bg-white focus:ring-slate-500 focus:border-slate-500"
-                                        value={week}
-                                        onChange={(e) => setWeek(e.target.value)}
-                                    />
-                                </div>
-                            )}
+                    {reportType === 'weekly' && (
+                        <input
+                            type="week"
+                            value={week}
+                            onChange={(e) => setWeek(e.target.value)}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    )}
 
-                            {reportType === 'monthly' && (
-                                <div className="flex gap-2">
-                                    <div>
-                                        <label htmlFor="month-picker" className="block text-sm font-medium text-slate-700 mb-1">Month</label>
-                                        <select
-                                            id="month-picker"
-                                            name="month"
-                                            className="select w-full border-slate-300 bg-white focus:ring-slate-500 focus:border-slate-500"
-                                            value={month}
-                                            onChange={(e) => setMonth(e.target.value)}
-                                        >
-                                            {[...Array(12)].map((_, i) => (
-                                                <option key={i+1} value={i+1}>
-                                                    {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="month-year-picker" className="block text-sm font-medium text-slate-700 mb-1">Year</label>
-                                        <input
-                                            id="month-year-picker"
-                                            type="number"
-                                            name="year"
-                                            placeholder="YYYY"
-                                            className="input w-full border-slate-300 bg-white focus:ring-slate-500 focus:border-slate-500"
-                                            min="2020"
-                                            max={new Date().getFullYear() + 5}
-                                            value={year}
-                                            onChange={(e) => setYear(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {reportType === 'yearly' && (
-                                <div>
-                                    <label htmlFor="year-picker" className="block text-sm font-medium text-slate-700 mb-1">Select Year</label>
-                                    <input
-                                        id="year-picker"
-                                        type="number"
-                                        name="year"
-                                        placeholder="YYYY"
-                                        className="input w-full sm:w-auto border-slate-300 bg-white focus:ring-slate-500 focus:border-slate-500"
-                                        min="2020"
-                                        max={new Date().getFullYear() + 5}
-                                        value={year}
-                                        onChange={(e) => setYear(e.target.value)}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mt-4 sm:mt-0 sm:self-end flex gap-2">
-                            <button
-                                type="button"
-                                onClick={generateReport}
-                                disabled={isLoading}
-                                className="btn bg-slate-600 hover:bg-slate-700 text-white border-none w-full sm:w-auto"
+                    {reportType === 'monthly' && (
+                        <>
+                            <select
+                                value={month}
+                                onChange={(e) => setMonth(e.target.value)}
+                                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
-                                {isLoading ? 'Loading...' : 'Generate Report'}
-                            </button>
+                                {[...Array(12)].map((_, i) => (
+                                    <option key={i + 1} value={i + 1}>
+                                        {new Date(2000, i, 1).toLocaleString('default', { month: 'short' })}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                type="number"
+                                placeholder="Year"
+                                min="2020"
+                                max={new Date().getFullYear() + 5}
+                                value={year}
+                                onChange={(e) => setYear(e.target.value)}
+                                className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                        </>
+                    )}
 
-                            <button
-                                type="button"
-                                onClick={handleDownloadCSV}
-                                disabled={isLoading}
-                                className="btn bg-slate-700 hover:bg-slate-800 text-white border-none"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                CSV
-                            </button>
-                        </div>
-                    </div>
+                    {reportType === 'yearly' && (
+                        <input
+                            type="number"
+                            placeholder="Year"
+                            min="2020"
+                            max={new Date().getFullYear() + 5}
+                            value={year}
+                            onChange={(e) => setYear(e.target.value)}
+                            className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 lg:ml-auto">
+                    <button
+                        type="button"
+                        onClick={generateReport}
+                        disabled={isLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                        {isLoading ? 'Loading...' : 'Generate'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleDownloadCSV}
+                        disabled={isLoading}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        CSV
+                    </button>
                 </div>
             </div>
-        </form>
+        </div>
     );
-}
+});
+
+export default ReportControls;

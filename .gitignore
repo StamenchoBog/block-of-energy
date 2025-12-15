@@ -281,3 +281,74 @@ vite.config.ts.timestamp-*
 
 # Certs
 hyperledger-fabric/certs/*.pem
+
+# Hyperledger Fabric Development Environment .gitignore
+
+# Downloaded Istio binaries and samples (can be re-downloaded)
+istio-*/
+
+# Generated certificates and keys
+*.pem
+*.crt
+*.key
+*.csr
+
+# Fabric network connection files (contain sensitive data)
+energy-network.yaml
+*-msp.yaml
+*msp*.yaml
+peer-*.yaml
+
+# Chaincode packages (generated files)
+*.tgz
+*.tar.gz
+code.tar.gz
+chaincode.tgz
+metadata.json
+connection.json
+
+# Kubernetes keystore directories
+keystore/
+
+# Hyperledger Fabric binaries (downloaded during setup)
+bin/
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+.tmp/
+
+# Wallet and identity files (sensitive)
+wallet/
+*-wallet.json
+*-identity.json
+
+# Generated Kubernetes manifests (if any)
+k8s/generated/
+
+# Docker build context (if needed)
+.dockerignore
+
+# HLF test data and artifacts
+test-artifacts/
+test-network/
+
+# Fabric CA artifacts
+fabric-ca-server-config.yaml
+ca-cert.pem
+IssuerPublicKey
+IssuerRevocationPublicKey
+msp/
+
+# Keep important template files but ignore filled ones
+!k8s/*-template.yaml
+
+# Keep example/template configs
+!config-examples/
+!templates/
+
+# Simulation output JSON file(s)
+tools/energy-data-simulator/simulation-output/**/*
