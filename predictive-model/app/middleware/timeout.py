@@ -32,3 +32,4 @@ async def timeout_middleware(request: Request, call_next):
         return JSONResponse(
             status_code=500, content={"detail": "Internal server error"}
         )
+

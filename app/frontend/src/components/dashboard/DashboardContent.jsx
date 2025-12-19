@@ -1,86 +1,37 @@
-import { memo, useMemo, useEffect } from 'react';
-import { useDashboardData, useReportData } from '../../hooks';
+import { memo, useMemo, useEffect, useState } from 'react';
+import { useDashboardData, useReportData, usePredictions } from '../../hooks';
 import EnergyChart from '../charts/EnergyChart';
-
-const MetricCard = memo(({ title, subtitle, value, unit, icon, colorClass, large = false }) => (
-    <div className={`metric-card ${large ? 'col-span-1 md:col-span-2 lg:col-span-1' : ''}`}>
-        <div className="flex items-center justify-between mb-4">
-            <div>
-                <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-                    {title}
-                </h3>
-                {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-            </div>
-            <div className={`w-10 h-10 ${colorClass?.bg || 'bg-gray-100'} rounded-lg flex items-center justify-center`}>
-                {icon}
-            </div>
-        </div>
-        <div className="flex items-baseline">
-            <span className={`${large ? 'text-4xl' : 'text-3xl'} font-bold ${colorClass?.text || 'text-gray-600'}`}>
-                {value}
-            </span>
-            {unit && <span className="ml-2 text-lg font-medium text-gray-500">{unit}</span>}
-        </div>
-    </div>
-));
-
-MetricCard.displayName = 'MetricCard';
-
-const SecondaryMetric = memo(({ title, value, unit }) => (
-    <div className="metric-card">
-        <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-                {title}
-            </h3>
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                {unit}
-            </span>
-        </div>
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-    </div>
-));
-
-SecondaryMetric.displayName = 'SecondaryMetric';
-
-const LoadingSkeleton = () => (
-    <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[...Array(4)].map((_, i) => (
-                <div key={i} className="metric-card animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
-                    <div className="h-8 bg-gray-200 rounded w-20"></div>
-                </div>
-            ))}
-        </div>
-        <div className="metric-card mb-8 animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-            <div className="h-80 bg-gray-200 rounded-lg"></div>
-        </div>
-    </>
-);
-
-const ErrorDisplay = ({ error, onRetry }) => (
-    <div className="metric-card text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Data</h3>
-        <p className="text-sm text-gray-500 mb-4">{error}</p>
-        <button onClick={onRetry} className="btn-modern primary">
-            Try Again
-        </button>
-    </div>
-);
+import ForecastChart from '../charts/ForecastChart';
+import AnomalyPanel from './AnomalyPanel';
+import MetricCard, { SecondaryMetric } from '../ui/MetricCard';
+import { DashboardSkeleton } from '../ui/LoadingStates';
+import { ErrorDisplay } from '../ui/ErrorDisplay';
 
 const DashboardContent = memo(({ apiUrl }) => {
     const { data, loading, error, refetch } = useDashboardData(apiUrl);
     const { data: chartData, loading: chartLoading, activeRange, fetchData: fetchChartData } = useReportData();
+    const {
+        forecast,
+        anomalies,
+        loading: predictionsLoading,
+        serviceAvailable,
+        isTraining,
+        fetchAllPredictions
+    } = usePredictions();
+
+    const [activeTab, setActiveTab] = useState('actual');
+    const [forecastHours, setForecastHours] = useState(24);
 
     useEffect(() => {
         fetchChartData('day');
     }, [fetchChartData]);
+
+    // Fetch predictions when switching to forecast or analysis tab
+    useEffect(() => {
+        if (activeTab === 'forecast' || activeTab === 'analysis') {
+            fetchAllPredictions(forecastHours);
+        }
+    }, [activeTab, forecastHours, fetchAllPredictions]);
 
     const lastUpdated = useMemo(() => {
         if (!data?.power?.processingTimestamp) return 'N/A';
@@ -123,7 +74,7 @@ const DashboardContent = memo(({ apiUrl }) => {
             </div>
 
             {loading && !data ? (
-                <LoadingSkeleton />
+                <DashboardSkeleton />
             ) : (
                 <>
                     {/* Key Metrics */}
@@ -178,39 +129,152 @@ const DashboardContent = memo(({ apiUrl }) => {
                         />
                     </div>
 
-                    {/* Chart Section */}
+                    {/* Chart Section with Tabs */}
                     <div className="metric-card mb-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h2 className="text-xl font-semibold text-gray-900">Power Consumption</h2>
-                                <p className="text-sm text-gray-600">
-                                    {activeRange === 'day' ? '24-hour trend' :
-                                     activeRange === 'week' ? 'Weekly trend' : 'Monthly trend'}
-                                </p>
-                            </div>
-                            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                                {['day', 'week', 'month'].map((range) => (
+                        {/* Tab Navigation */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                            <div className="flex items-center space-x-1 bg-gray-100 rounded-xl p-1 mb-4 sm:mb-0">
+                                {[
+                                    { id: 'actual', label: 'Actual', icon: (
+                                        <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002 2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                    )},
+                                    { id: 'forecast', label: 'Forecast', icon: (
+                                        <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    )},
+                                    { id: 'analysis', label: 'Analysis', icon: (
+                                        <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 11.622 5.176-1.332 9-11.622z" />
+                                        </svg>
+                                    )}
+                                ].map((tab) => (
                                     <button
-                                        key={range}
-                                        onClick={() => fetchChartData(range)}
-                                        disabled={chartLoading}
-                                        className={`px-4 py-2 text-sm font-medium transition-colors
-                                            ${activeRange === range
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-white text-gray-600 hover:bg-gray-50'}
-                                            ${range !== 'day' ? 'border-l border-gray-200' : ''}
-                                            disabled:opacity-50
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+                                            ${activeTab === tab.id
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'}
                                         `}
                                     >
-                                        {range.charAt(0).toUpperCase() + range.slice(1)}
+                                        {tab.icon}
+                                        {tab.label}
+                                        {tab.id === 'analysis' && anomalies?.anomalies?.length > 0 && (
+                                            <span className="ml-1.5 px-1.5 py-0.5 text-xs font-semibold bg-red-100 text-red-600 rounded-full">
+                                                {anomalies.anomalies.length}
+                                            </span>
+                                        )}
                                     </button>
                                 ))}
                             </div>
+
+                            {/* Controls based on active tab */}
+                            {activeTab === 'actual' && (
+                                <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                                    {['day', 'week', 'month'].map((range) => (
+                                        <button
+                                            key={range}
+                                            onClick={() => fetchChartData(range)}
+                                            disabled={chartLoading}
+                                            className={`px-4 py-2 text-sm font-medium transition-colors
+                                                ${activeRange === range
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-white text-gray-600 hover:bg-gray-50'}
+                                                ${range !== 'day' ? 'border-l border-gray-200' : ''}
+                                                disabled:opacity-50
+                                            `}
+                                        >
+                                            {range.charAt(0).toUpperCase() + range.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {(activeTab === 'forecast' || activeTab === 'analysis') && (
+                                <div className="flex items-center space-x-3">
+                                    <label className="text-sm text-gray-600">Forecast horizon:</label>
+                                    <select
+                                        value={forecastHours}
+                                        onChange={(e) => setForecastHours(Number(e.target.value))}
+                                        disabled={predictionsLoading || isTraining}
+                                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
+                                    >
+                                        <option value={12}>12 hours</option>
+                                        <option value={24}>24 hours</option>
+                                        <option value={48}>48 hours</option>
+                                        <option value={72}>72 hours</option>
+                                        <option value={168}>7 days</option>
+                                    </select>
+                                    {isTraining && (
+                                        <span className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                                            <svg className="w-3 h-3 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4h2v-4h-2v4h2v-4h-2z"></path>
+                                            </svg>
+                                            Model training...
+                                        </span>
+                                    )}
+                                    {!serviceAvailable && !isTraining && (
+                                        <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                                            Service unavailable
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        <EnergyChart
-                            data={chartData.length > 0 ? chartData : (data?.hourlyPowerData || [])}
-                            loading={chartLoading}
-                        />
+
+                        {/* Tab Content */}
+                        {activeTab === 'actual' && (
+                            <div>
+                                <div className="mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-900">Power Consumption</h2>
+                                    <p className="text-sm text-gray-600">
+                                        {activeRange === 'day' ? '24-hour trend' :
+                                         activeRange === 'week' ? 'Weekly trend' : 'Monthly trend'}
+                                    </p>
+                                </div>
+                                <EnergyChart
+                                    data={chartData.length > 0 ? chartData : (data?.hourlyPowerData || [])}
+                                    loading={chartLoading}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'forecast' && (
+                            <div>
+                                <div className="mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-900">Power Forecast</h2>
+                                    <p className="text-sm text-gray-600">
+                                        Predicted consumption for the next {forecastHours} hours with confidence intervals
+                                    </p>
+                                </div>
+                                <ForecastChart
+                                    predictions={forecast?.predictions || []}
+                                    modelInfo={forecast?.model_info}
+                                    loading={predictionsLoading}
+                                    anomalies={anomalies?.anomalies || []}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'analysis' && (
+                            <div>
+                                <div className="mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-900">Anomaly Detection</h2>
+                                    <p className="text-sm text-gray-600">
+                                        Unusual patterns detected in your energy consumption
+                                    </p>
+                                </div>
+                                <AnomalyPanel
+                                    anomalies={anomalies?.anomalies || []}
+                                    summary={anomalies?.summary}
+                                    loading={predictionsLoading}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Secondary Metrics */}

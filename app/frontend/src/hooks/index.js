@@ -40,6 +40,8 @@ export function useDashboardData(apiUrl = '', refreshInterval = 30000) {
     }, [baseUrl]);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
         fetchData();
 
         // Set up auto-refresh
@@ -51,18 +53,7 @@ export function useDashboardData(apiUrl = '', refreshInterval = 30000) {
 }
 
 export function useLocalStorage(key, initialValue) {
-    const [storedValue, setStoredValue] = useState(() => {
-        if (typeof window === 'undefined') {
-            return initialValue;
-        }
-        try {
-            const item = window.localStorage.getItem(key);
-            return item ? JSON.parse(item) : initialValue;
-        } catch (error) {
-            console.error(`Error reading localStorage key "${key}":`, error);
-            return initialValue;
-        }
-    });
+    const [storedValue, setStoredValue] = useState(initialValue);
 
     const setValue = (value) => {
         try {
@@ -95,4 +86,10 @@ export function useDebounce(value, delay) {
     return debouncedValue;
 }
 
+// Re-export other hooks
 export { useReportData } from './useReportData';
+export { usePredictions } from './usePredictions';
+export { useFormatters, getStatusColor, formatValue, formatDateTime } from './useFormatters';
+
+
+

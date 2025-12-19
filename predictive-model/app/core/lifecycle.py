@@ -15,12 +15,10 @@ async def train_models_job():
     try:
         data = await data_service.get_training_data(days=7)
         if data:
-            # Train forecaster asynchronously
             forecaster_success = await forecaster.train_async(data)
             if forecaster_success:
                 logger.info("Forecaster training successful")
 
-            # Train anomaly detector asynchronously
             anomaly_success = await anomaly_detector.train_async(data)
             if anomaly_success:
                 logger.info("Anomaly detector training successful")
@@ -33,11 +31,9 @@ async def train_models_job():
 async def setup_lifespan(app, db_client):
     """Setup application lifespan management."""
 
-    # --- Startup ---
     logger.info("Connecting to MongoDB...")
     data_service.connect(db_client)
 
-    # Start Scheduler for periodic retraining
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
     global scheduler
@@ -46,12 +42,9 @@ async def setup_lifespan(app, db_client):
         train_models_job, "interval", hours=settings.RETRAIN_INTERVAL_HOURS
     )
     scheduler.start()
-
-    # Trigger initial training immediately in background
     asyncio.create_task(train_models_job())
 
     yield
 
-    # --- Shutdown ---
     scheduler.shutdown()
     db_client.close()

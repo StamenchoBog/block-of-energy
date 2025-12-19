@@ -1,0 +1,8 @@
+                        {
+                            $group: {
+                                _id: { $substr: ["$processingTimestamp", 0, 10] },
+                                totalEnergy: { $sum: "$payload.ENERGY.Today" },
+                                avgPower: { $avg: "$payload.ENERGY.Power" },
+                                readingCount: { $sum: 1 }
+                            }
+                        }

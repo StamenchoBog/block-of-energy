@@ -24,6 +24,55 @@ interface ApiResponse<T> {
     status: number;
 }
 
+// Prediction types
+export interface ForecastPrediction {
+    timestamp: string;
+    predicted_power: number;
+    lower_bound: number;
+    upper_bound: number;
+}
+
+export interface ModelInfo {
+    name: string;
+    accuracy_mape: number;
+    last_trained: string;
+}
+
+export interface ForecastResponse {
+    predictions: ForecastPrediction[];
+    model_info: ModelInfo;
+}
+
+export interface Anomaly {
+    timestamp: string;
+    actual_power: number;
+    expected_power: number;
+    anomaly_score: number;
+    anomaly_type: 'spike' | 'dip' | 'pattern_change';
+}
+
+export interface AnomalySummary {
+    total_count: number;
+    severity: 'low' | 'medium' | 'high';
+}
+
+export interface AnomalyResponse {
+    anomalies: Anomaly[];
+    summary: AnomalySummary;
+}
+
+export type PredictionErrorType = 'training' | 'unavailable' | 'timeout' | 'error';
+
+export interface PredictionError {
+    type: PredictionErrorType;
+    message: string;
+}
+
+export interface PredictionResult<T> {
+    data: T | null;
+    error?: PredictionError;
+}
+
 interface DashboardData {
     power?: { value: string; processingTimestamp?: string };
     voltage?: { value: string };
@@ -134,5 +183,150 @@ export async function fetchReportData(params: ReportParams): Promise<any> {
         clearTimeout(timeoutId);
         logger.error('Error fetching report data:', error);
         return null;
+    }
+}
+
+/**
+ * Fetches forecast predictions from the prediction service
+ * Returns a result object with data and error info for better error handling
+ */
+export async function fetchForecast(hours: number = 24): Promise<PredictionResult<ForecastResponse>> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const response = await fetch(`${API_URL}/api/predictions/forecast?hours=${hours}`, {
+            signal: controller.signal,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            let errorMessage = 'Service unavailable';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.detail || errorMessage;
+            } catch {
+                // Ignore JSON parse errors
+            }
+
+            const isTraining = response.status === 503 &&
+                errorMessage.toLowerCase().includes('training');
+
+            if (isTraining) {
+                logger.warn('Model is training');
+                return {
+                    data: null,
+                    error: { type: 'training', message: errorMessage }
+                };
+            }
+
+            if (response.status === 503 || response.status === 502) {
+                logger.warn('Prediction service unavailable');
+                return {
+                    data: null,
+                    error: { type: 'unavailable', message: errorMessage }
+                };
+            }
+
+            return {
+                data: null,
+                error: { type: 'error', message: `API error: ${response.status}` }
+            };
+        }
+
+        return { data: await response.json() };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if ((error as Error).name === 'AbortError') {
+            logger.error('Forecast API request timed out', error);
+            return {
+                data: null,
+                error: { type: 'timeout', message: 'Request timed out' }
+            };
+        }
+        logger.error('Error fetching forecast data:', error);
+        return {
+            data: null,
+            error: { type: 'error', message: (error as Error).message }
+        };
+    }
+}
+
+/**
+ * Fetches anomaly detection results from the prediction service
+ * Returns a result object with data and error info for better error handling
+ */
+export async function fetchAnomalies(hours: number = 24, sensitivity: number = 0.8): Promise<PredictionResult<AnomalyResponse>> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const response = await fetch(
+            `${API_URL}/api/predictions/anomalies?hours=${hours}&sensitivity=${sensitivity}`,
+            {
+                signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            let errorMessage = 'Service unavailable';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.detail || errorMessage;
+            } catch {
+                // Ignore JSON parse errors
+            }
+
+            const isTraining = response.status === 503 &&
+                errorMessage.toLowerCase().includes('training');
+
+            if (isTraining) {
+                logger.warn('Anomaly detector is training');
+                return {
+                    data: null,
+                    error: { type: 'training', message: errorMessage }
+                };
+            }
+
+            if (response.status === 503 || response.status === 502) {
+                logger.warn('Prediction service unavailable');
+                return {
+                    data: null,
+                    error: { type: 'unavailable', message: errorMessage }
+                };
+            }
+
+            return {
+                data: null,
+                error: { type: 'error', message: `API error: ${response.status}` }
+            };
+        }
+
+        return { data: await response.json() };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if ((error as Error).name === 'AbortError') {
+            logger.error('Anomalies API request timed out', error);
+            return {
+                data: null,
+                error: { type: 'timeout', message: 'Request timed out' }
+            };
+        }
+        logger.error('Error fetching anomalies data:', error);
+        return {
+            data: null,
+            error: { type: 'error', message: (error as Error).message }
+        };
     }
 }

@@ -199,7 +199,7 @@ const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumpti
                         </svg>
                     </div>
                     <h4 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h4>
-                    <p className="text-sm text-gray-500 text-center max-w-sm">
+                    <p className="text-sm text-gray-500 text-center max-w-md mx-auto">
                         Energy data will appear here once sensors start reporting measurements.
                     </p>
                 </div>
@@ -208,8 +208,16 @@ const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumpti
     }
 
     return (
-        <div className="h-80 relative">
-            <Line data={chartData} options={chartOptions} />
+        <div className="chart-container">
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                    <p className="text-sm text-gray-500">{displaySubtitle}</p>
+                </div>
+            </div>
+            <div className="h-80 relative">
+                <Line data={chartData} options={chartOptions} />
+            </div>
         </div>
     );
 });

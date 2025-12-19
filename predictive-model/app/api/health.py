@@ -27,10 +27,8 @@ async def detailed_health():
         },
     }
 
-    # Check database connection
     try:
         if data_service._client:
-            # Ping the database
             await data_service._client.admin.command("ping")
             health_status["services"]["database"] = {
                 "status": "healthy",
@@ -49,7 +47,6 @@ async def detailed_health():
         }
         health_status["status"] = "degraded"
 
-    # Check forecaster
     try:
         if forecaster.is_trained:
             health_status["services"]["forecaster"] = {
@@ -73,7 +70,6 @@ async def detailed_health():
         }
         health_status["status"] = "degraded"
 
-    # Check anomaly detector
     try:
         if anomaly_detector.is_trained:
             health_status["services"]["anomaly_detector"] = {
@@ -97,7 +93,6 @@ async def detailed_health():
         }
         health_status["status"] = "degraded"
 
-    # Return appropriate HTTP status based on overall health
     if health_status["status"] == "healthy":
         return health_status
     elif health_status["status"] == "initializing":

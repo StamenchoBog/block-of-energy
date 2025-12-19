@@ -71,3 +71,51 @@ export interface DashboardSummary {
 
 export type ApiRequest = Request;
 export type ApiResponse = Response;
+
+export interface ForecastPrediction {
+    timestamp: string;
+    predicted_power: number;
+    lower_bound: number;
+    upper_bound: number;
+}
+
+export interface ModelInfo {
+    name: string;
+    accuracy_mape: number;
+    last_trained: string;
+}
+
+export interface ForecastResponse {
+    predictions: ForecastPrediction[];
+    model_info: ModelInfo;
+}
+
+export interface Anomaly {
+    timestamp: string;
+    actual_power: number;
+    expected_power: number;
+    anomaly_score: number;
+    anomaly_type: 'spike' | 'dip' | 'pattern_change';
+}
+
+export interface AnomalySummary {
+    total_count: number;
+    severity: 'low' | 'medium' | 'high';
+}
+
+export interface AnomalyResponse {
+    anomalies: Anomaly[];
+    summary: AnomalySummary;
+}
+
+export interface ModelStatus {
+    is_trained: boolean;
+    last_trained: string | null;
+    data_points_used: number;
+    status: 'ready' | 'initializing';
+}
+
+export interface TrainResponse {
+    message: string;
+    status: string;
+}

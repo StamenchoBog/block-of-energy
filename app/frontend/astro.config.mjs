@@ -5,18 +5,18 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const API_URL = process.env.PUBLIC_API_URL;
+const API_URL = process.env.PUBLIC_API_URL || 'http://localhost:3000';
 
 export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     server: {
-      proxy: {
+      proxy: API_URL ? {
         '/api': {
           target: API_URL,
           changeOrigin: true
         }
-      }
+      } : undefined
     },
     build: {
       rollupOptions: {

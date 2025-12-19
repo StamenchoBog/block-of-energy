@@ -80,11 +80,29 @@ class DashboardService {
         const latestDevice = result.latest[0] as TasmotaDevice | undefined;
 
         if (!latestDevice || !latestDevice.payload.ENERGY) {
-            throw new Error('No energy data found');
+            const summary: DashboardSummary = {
+                power: { value: '0', processingTimestamp: new Date() },
+                voltage: { value: '0' },
+                current: { value: '0' },
+                energyToday: { value: '0' },
+                powerFactor: { value: '0' },
+                apparentPower: { value: '0' },
+                reactivePower: { value: '0' },
+                energyTotal: { value: '0' },
+                hourlyPowerData: [],
+                dailySummary: [],
+                todayData: []
+            };
+            return summary;
         }
 
         const energy = latestDevice.payload.ENERGY;
-
+        
+        // Handle potentially missing Total field and calculate if needed
+        const totalEnergy = energy.Total || 
+            (energy.Total !== undefined && energy.Total !== null) ? energy.Total : 
+            energy.Today || 0; // Fallback to today's energy if Total is not available
+        
         const summary: DashboardSummary = {
             power: {
                 value: energy.Power.toString(),
@@ -96,7 +114,7 @@ class DashboardService {
             powerFactor: { value: energy.Factor.toString() },
             apparentPower: { value: energy.ApparentPower.toString() },
             reactivePower: { value: energy.ReactivePower.toString() },
-            energyTotal: { value: energy.Total.toString() },
+            energyTotal: { value: totalEnergy.toString() },
 
             hourlyPowerData: result.hourlyData.map((item: any) => ({
                 timestamp: new Date(item.timestamp),

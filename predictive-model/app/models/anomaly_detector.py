@@ -38,8 +38,6 @@ class AnomalyDetector(BaseModelAsync):
     def _train_sync(self, data: List[Dict[str, Any]]) -> bool:
         """Internal synchronous training method."""
         df = pd.DataFrame(data)
-
-        # Feature engineering for anomaly detection
         features = self._extract_features(df)
 
         logger.info(f"Training anomaly detector on {len(features)} data points...")

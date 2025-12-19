@@ -26,11 +26,18 @@ export function loadEnvironment(): void {
     }
 
     // Required environment variables
-    const requiredEnvVars = ['PORT', 'MONGODB_URI'];
+    const requiredEnvVars = ['PORT', 'MONGODB_URI', 'PREDICTION_SERVICE_URL'];
     const missingEnvVars = requiredEnvVars.filter(name => !process.env[name]);
 
     if (missingEnvVars.length > 0) {
         throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    }
+
+    if (!process.env.PREDICTION_SERVICE_TIMEOUT) {
+        process.env.PREDICTION_SERVICE_TIMEOUT = '30000';
+    }
+    if (!process.env.PREDICTION_CACHE_TTL) {
+        process.env.PREDICTION_CACHE_TTL = '300000'; // 5 minutes
     }
 
     logger.info(`Environment loaded: ${environment}`);

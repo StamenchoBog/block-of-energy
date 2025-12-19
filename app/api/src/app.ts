@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import reportRoutes from './routes/reportRoutes';
 import dashboardRoutes from "./routes/dashboardRoutes";
+import predictionRoutes from "./routes/predictionRoutes";
 import { logStream } from './config/logger';
 import logger from './config/logger';
 
@@ -38,6 +39,7 @@ setInterval(() => {
 // Apply routes
 app.use('/api', dashboardRoutes);
 app.use('/api', reportRoutes);
+app.use('/api', predictionRoutes);
 
 // Error handling middleware
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
