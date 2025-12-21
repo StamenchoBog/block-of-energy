@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { formatAnomalyTime } from '../../hooks/useFormatters';
 
 const severityConfig = {
     low: {
@@ -70,12 +71,7 @@ const AnomalyCard = memo(({ anomaly }) => {
                     <div>
                         <h4 className="text-sm font-medium text-gray-900">{typeConfig.label}</h4>
                         <p className="text-xs text-gray-500">
-                            {new Date(anomaly.timestamp).toLocaleString([], {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
+                            {formatAnomalyTime(anomaly.timestamp)}
                         </p>
                     </div>
                 </div>

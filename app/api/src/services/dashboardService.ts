@@ -97,24 +97,26 @@ class DashboardService {
         }
 
         const energy = latestDevice.payload.ENERGY;
-        
+
+        const safeToString = (value: number | null | undefined, fallback = '0'): string => {
+            return (value !== null && value !== undefined) ? value.toString() : fallback;
+        };
+
         // Handle potentially missing Total field and calculate if needed
-        const totalEnergy = energy.Total || 
-            (energy.Total !== undefined && energy.Total !== null) ? energy.Total : 
-            energy.Today || 0; // Fallback to today's energy if Total is not available
-        
+        const totalEnergy = energy.Total ?? energy.Today ?? 0;
+
         const summary: DashboardSummary = {
             power: {
-                value: energy.Power.toString(),
+                value: safeToString(energy.Power),
                 processingTimestamp: new Date(latestDevice.processingTimestamp)
             },
-            voltage: { value: energy.Voltage.toString() },
-            current: { value: energy.Current.toString() },
-            energyToday: { value: energy.Today.toString() },
-            powerFactor: { value: energy.Factor.toString() },
-            apparentPower: { value: energy.ApparentPower.toString() },
-            reactivePower: { value: energy.ReactivePower.toString() },
-            energyTotal: { value: totalEnergy.toString() },
+            voltage: { value: safeToString(energy.Voltage) },
+            current: { value: safeToString(energy.Current) },
+            energyToday: { value: safeToString(energy.Today) },
+            powerFactor: { value: safeToString(energy.Factor) },
+            apparentPower: { value: safeToString(energy.ApparentPower) },
+            reactivePower: { value: safeToString(energy.ReactivePower) },
+            energyTotal: { value: safeToString(totalEnergy) },
 
             hourlyPowerData: result.hourlyData.map((item: any) => ({
                 timestamp: new Date(item.timestamp),

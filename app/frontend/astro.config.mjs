@@ -24,7 +24,7 @@ export default defineConfig({
           manualChunks: {
             vendor: ['react', 'react-dom'],
             charts: ['chart.js', 'react-chartjs-2'],
-            utils: ['date-fns', 'lodash']
+            utils: ['date-fns']
           }
         },
         external: [],

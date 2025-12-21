@@ -2,17 +2,21 @@ import pandas as pd
 from prophet import Prophet
 from datetime import datetime, timedelta
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.config import settings
 from app.models.base_model import BaseModelAsync
 
 logger = logging.getLogger(__name__)
 
+CACHE_TTL_SECONDS = 3600  # 1 hour
+MAX_FORECAST_HOURS = 168  # Cache this once, slice for smaller requests
+
 
 class EnergyForecaster(BaseModelAsync):
     def __init__(self):
         super().__init__()
+        self._cache: Optional[tuple[datetime, List[Dict[str, Any]]]] = None
 
     async def train_async(self, data: List[Dict[str, Any]]) -> bool:
         """Async training method that runs Prophet training in a thread pool."""
@@ -49,16 +53,43 @@ class EnergyForecaster(BaseModelAsync):
         m.fit(df)
 
         self.model = m
+        self._cache = None
         self._update_training_status(len(df))
         return True
 
+    def _get_cached(self, hours: int) -> Optional[List[Dict[str, Any]]]:
+        """Return sliced predictions from cache if valid."""
+        if self._cache is None:
+            return None
+        created_at, predictions = self._cache
+        if datetime.utcnow() - created_at > timedelta(seconds=CACHE_TTL_SECONDS):
+            self._cache = None
+            return None
+        return predictions[:hours]
+
     async def predict_async(self, hours: int = 24) -> List[Dict[str, Any]]:
-        """Async prediction method that runs in thread pool."""
+        """Async prediction method with caching."""
         if not self.is_trained:
             return []
 
-        result = await self._run_in_executor(self._predict_sync, hours)
-        return result if result is not None else []
+        cached = self._get_cached(hours)
+        if cached is not None:
+            logger.debug(f"Cache hit for {hours}h forecast (sliced from {MAX_FORECAST_HOURS}h)")
+            return cached
+
+        # Compute max horizon and cache it
+        result = await self._run_in_executor(self._predict_sync, MAX_FORECAST_HOURS)
+        if result:
+            self._cache = (datetime.utcnow(), result)
+            return result[:hours]
+        return []
+
+    async def warm_cache(self) -> None:
+        """Pre-compute max horizon predictions."""
+        if not self.is_trained:
+            return
+        await self.predict_async(MAX_FORECAST_HOURS)
+        logger.info(f"Cache warmed with {MAX_FORECAST_HOURS}h forecast")
 
     def predict(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Synchronous prediction method for backward compatibility."""

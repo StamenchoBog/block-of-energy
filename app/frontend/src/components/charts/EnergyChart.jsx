@@ -11,6 +11,7 @@ import {
     Filler
 } from 'chart.js';
 import { memo, useMemo } from 'react';
+import { formatChartDate, formatChartTime } from '../../hooks/useFormatters';
 
 ChartJS.register(
     CategoryScale,
@@ -23,14 +24,29 @@ ChartJS.register(
     Filler
 );
 
-const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumption", metric = "power", unit = "W", subtitle = null }) => {
+const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumption", metric = "power", unit = "W", subtitle = null, timeRange = null }) => {
     const hasValidData = data && Array.isArray(data) && data.length > 0;
 
-    const isMultiDay = useMemo(() => {
-        if (!hasValidData || data.length < 2) return false;
-        const firstDate = new Date(data[0].timestamp);
-        const lastDate = new Date(data[data.length - 1].timestamp);
-        return firstDate.toDateString() !== lastDate.toDateString();
+    const { isMultiDay, dayCount, dateRangeLabel } = useMemo(() => {
+        if (!hasValidData || data.length < 2) {
+            return { isMultiDay: false, dayCount: 1, dateRangeLabel: null };
+        }
+
+        const sortedData = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const firstDate = new Date(sortedData[0].timestamp);
+        const lastDate = new Date(sortedData[sortedData.length - 1].timestamp);
+        const isMulti = firstDate.toDateString() !== lastDate.toDateString();
+
+        // Calculate actual day difference
+        const diffTime = Math.abs(lastDate - firstDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+
+        // Create human-readable date range label using centralized formatters
+        const rangeLabel = isMulti
+            ? `${formatChartDate(firstDate)} - ${formatChartDate(lastDate)}`
+            : formatChartDate(firstDate);
+
+        return { isMultiDay: isMulti, dayCount: diffDays, dateRangeLabel: rangeLabel };
     }, [data, hasValidData]);
 
     const chartData = useMemo(() => {
@@ -40,25 +56,21 @@ const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumpti
 
         return {
             labels: sortedData.map(item => {
-                try {
-                    const date = new Date(item.timestamp);
-                    if (isNaN(date.getTime())) return 'Invalid';
-
-                    if (isMultiDay) {
-                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    }
-                    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-                } catch {
-                    return 'Invalid';
-                }
+                // Use centralized formatters for consistent date/time display
+                return isMultiDay
+                    ? formatChartDate(item.timestamp)
+                    : formatChartTime(item.timestamp);
             }),
             datasets: [
                 {
                     label: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (${unit})`,
                     data: sortedData.map(item => {
-                        const value = item[metric] || item.power || 0;
+                        const value = item[metric] || item.power;
+                        // Handle null/undefined to create gaps in the chart
+                        if (value === null || value === undefined) return null;
                         return typeof value === 'number' ? value : parseFloat(value) || 0;
                     }),
+                    spanGaps: false, // Break line where data is null
                     borderColor: 'rgba(14, 165, 233, 1)',
                     backgroundColor: 'rgba(14, 165, 233, 0.08)',
                     fill: true,
@@ -167,6 +179,18 @@ const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumpti
         }
     }), [metric, unit]);
 
+    const displaySubtitle = useMemo(() => {
+        if (subtitle) return subtitle;
+
+        if (!isMultiDay) {
+            return dateRangeLabel ? `24-hour trend · ${dateRangeLabel}` : '24-hour trend';
+        }
+
+        // For multi-day views, show day count and date range
+        const dayLabel = dayCount === 7 ? 'Weekly' : dayCount >= 28 ? 'Monthly' : `${dayCount}-day`;
+        return `${dayLabel} trend · ${dateRangeLabel || `${dayCount} days`}`;
+    }, [subtitle, isMultiDay, dayCount, dateRangeLabel]);
+
     if (loading) {
         return (
             <div className="chart-container animate-pulse">
@@ -180,8 +204,6 @@ const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumpti
             </div>
         );
     }
-
-    const displaySubtitle = subtitle || (isMultiDay ? `${data.length} days` : '24-hour trend');
 
     if (!hasValidData) {
         return (

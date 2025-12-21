@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
  * Custom hook for fetching dashboard data client-side
  * This ensures data is fetched at runtime, not build time
  */
-export function useDashboardData(apiUrl = '', refreshInterval = 30000) {
+export function useDashboardData(apiUrl = '', refreshInterval = 300000) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const baseUrl = apiUrl || '';
 
     const fetchData = useCallback(async () => {
+        setLoading(true);
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);

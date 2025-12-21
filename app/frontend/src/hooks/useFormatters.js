@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
+import { format, isValid, formatDistanceToNow } from 'date-fns';
 
 // Centralized formatters hook
 export const useFormatters = () => {
     return useMemo(() => ({
         // Format numeric values with appropriate units
         formatValue: (value, options = {}) => {
-            const { 
-                decimals = 0, 
-                prefix = '', 
+            const {
+                decimals = 0,
+                prefix = '',
                 suffix = '',
-                showLargeNumbers = true 
+                showLargeNumbers = true
             } = options;
 
             if (value === undefined || value === null) return "—";
-            
+
             let num = parseFloat(value);
             if (isNaN(num)) return value;
 
@@ -26,9 +27,9 @@ export const useFormatters = () => {
                 }
             }
 
-            const formattedValue = decimals > 0 ? num.toFixed(decimals) : 
+            const formattedValue = decimals > 0 ? num.toFixed(decimals) :
                                  Number.isInteger(num) ? num : num.toFixed(2);
-            
+
             return `${prefix}${formattedValue.toLocaleString()}${suffix}`;
         },
 
@@ -36,68 +37,84 @@ export const useFormatters = () => {
         formatLargeNumber: (val, decimals = 1) => {
             const num = parseFloat(val);
             if (isNaN(num)) return val;
-            
+
             if (num >= 1000000) return `${(num / 1000000).toFixed(decimals)}M`;
             if (num >= 1000) return `${(num / 1000).toFixed(decimals)}K`;
             return num.toLocaleString();
         },
 
-        // Format timestamps with various options
+        // Format timestamps with various options using date-fns
         formatDateTime: (timestamp, options = {}) => {
             const {
-                format = 'short',
+                formatType = 'short',
                 includeTime = true,
-                includeDate = true,
-                locale = 'en-US'
+                includeDate = true
             } = options;
 
             const date = new Date(timestamp);
-            if (isNaN(date.getTime())) return 'Invalid Date';
+            if (!isValid(date)) return 'Invalid Date';
 
-            let formatOptions = {};
-            
+            // Build format string based on options
+            let formatStr = '';
+
             if (includeDate) {
-                switch (format) {
+                switch (formatType) {
                     case 'full':
-                        formatOptions.year = 'numeric';
-                        formatOptions.month = 'long';
-                        formatOptions.day = 'numeric';
+                        formatStr = 'MMMM d, yyyy';
                         break;
                     case 'medium':
-                        formatOptions.year = 'numeric';
-                        formatOptions.month = 'short';
-                        formatOptions.day = 'numeric';
+                        formatStr = 'MMM d, yyyy';
                         break;
                     case 'short':
-                        formatOptions.month = 'short';
-                        formatOptions.day = 'numeric';
-                        break;
-                    case 'time':
-                        // Time only format
-                        break;
                     default:
-                        formatOptions.month = 'short';
-                        formatOptions.day = 'numeric';
+                        formatStr = 'MMM d';
+                        break;
                 }
             }
 
-            if (includeTime && format !== 'date') {
-                formatOptions.hour = '2-digit';
-                formatOptions.minute = '2-digit';
-                if (format === 'full' || format === 'medium') {
-                    formatOptions.second = '2-digit';
-                }
+            if (includeTime && formatType !== 'date') {
+                const timeFormat = (formatType === 'full' || formatType === 'medium')
+                    ? 'HH:mm:ss'
+                    : 'HH:mm';
+                formatStr = formatStr ? `${formatStr}, ${timeFormat}` : timeFormat;
             }
 
-            return date.toLocaleString(locale, formatOptions);
+            return format(date, formatStr);
         },
 
         // Format time from timestamp (hours:minutes)
         formatTime: (timestamp) => {
             const date = new Date(timestamp);
-            if (isNaN(date.getTime())) return '--:--';
-            
-            return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            if (!isValid(date)) return '--:--';
+            return format(date, 'HH:mm');
+        },
+
+        // Format date for chart labels (e.g., "Jan 15")
+        formatChartDate: (timestamp) => {
+            const date = new Date(timestamp);
+            if (!isValid(date)) return 'Invalid';
+            return format(date, 'MMM d');
+        },
+
+        // Format time for chart labels (e.g., "14:30")
+        formatChartTime: (timestamp) => {
+            const date = new Date(timestamp);
+            if (!isValid(date)) return 'Invalid';
+            return format(date, 'HH:mm');
+        },
+
+        // Format for anomaly timestamps (e.g., "Dec 21, 14:30")
+        formatAnomalyTime: (timestamp) => {
+            const date = new Date(timestamp);
+            if (!isValid(date)) return 'Invalid';
+            return format(date, 'MMM d, HH:mm');
+        },
+
+        // Format for last updated display (e.g., "14:30:45")
+        formatLastUpdated: (timestamp) => {
+            const date = new Date(timestamp);
+            if (!isValid(date)) return 'N/A';
+            return format(date, 'HH:mm:ss');
         },
 
         // Format duration in milliseconds to human readable
@@ -124,7 +141,7 @@ export const useFormatters = () => {
         formatEnergy: (value, unit = 'kWh') => {
             const num = parseFloat(value);
             if (isNaN(num)) return `0 ${unit}`;
-            
+
             if (num >= 1000 && unit === 'kWh') {
                 return `${(num / 1000).toFixed(2)} MWh`;
             }
@@ -135,7 +152,7 @@ export const useFormatters = () => {
         formatPower: (value, unit = 'W') => {
             const num = parseFloat(value);
             if (isNaN(num)) return `0 ${unit}`;
-            
+
             if (num >= 1000 && unit === 'W') {
                 return `${(num / 1000).toFixed(2)} kW`;
             }
@@ -153,7 +170,7 @@ export const useFormatters = () => {
         formatCurrency: (value, currency = 'USD', locale = 'en-US') => {
             const num = parseFloat(value);
             if (isNaN(num)) return '$0';
-            
+
             return new Intl.NumberFormat(locale, {
                 style: 'currency',
                 currency: currency
@@ -163,29 +180,19 @@ export const useFormatters = () => {
         // Format file size
         formatFileSize: (bytes) => {
             if (bytes === 0) return '0 Bytes';
-            
+
             const k = 1024;
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
-            
+
             return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
         },
 
-        // Format relative time (e.g., "2 hours ago")
-        formatRelativeTime: (timestamp, locale = 'en-US') => {
+        // Format relative time (e.g., "2 hours ago") using date-fns
+        formatRelativeTime: (timestamp) => {
             const date = new Date(timestamp);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMins / 60);
-            const diffDays = Math.floor(diffHours / 24);
-
-            if (diffMins < 1) return 'just now';
-            if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-            if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-            
-            return date.toLocaleDateString(locale);
+            if (!isValid(date)) return 'Invalid Date';
+            return formatDistanceToNow(date, { addSuffix: true });
         }
     }), []);
 };
@@ -210,13 +217,27 @@ export const getStatusColor = (title, value) => {
     }
 };
 
-// Export a simplified version for components that don't need the full hook
-export const formatValue = (value, options = {}) => {
-    const formatters = useFormatters();
-    return formatters.formatValue(value, options);
+// Standalone formatters for use outside React components
+export const formatChartDate = (timestamp) => {
+    const date = new Date(timestamp);
+    if (!isValid(date)) return 'Invalid';
+    return format(date, 'MMM d');
 };
 
-export const formatDateTime = (timestamp, options = {}) => {
-    const formatters = useFormatters();
-    return formatters.formatDateTime(timestamp, options);
+export const formatChartTime = (timestamp) => {
+    const date = new Date(timestamp);
+    if (!isValid(date)) return 'Invalid';
+    return format(date, 'HH:mm');
+};
+
+export const formatAnomalyTime = (timestamp) => {
+    const date = new Date(timestamp);
+    if (!isValid(date)) return 'Invalid';
+    return format(date, 'MMM d, HH:mm');
+};
+
+export const formatLastUpdated = (timestamp) => {
+    const date = new Date(timestamp);
+    if (!isValid(date)) return 'N/A';
+    return format(date, 'HH:mm:ss');
 };

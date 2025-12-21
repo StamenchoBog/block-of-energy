@@ -1,5 +1,6 @@
 import { memo, useMemo, useEffect, useState } from 'react';
 import { useDashboardData, useReportData, usePredictions } from '../../hooks';
+import { formatLastUpdated } from '../../hooks/useFormatters';
 import EnergyChart from '../charts/EnergyChart';
 import ForecastChart from '../charts/ForecastChart';
 import AnomalyPanel from './AnomalyPanel';
@@ -35,12 +36,7 @@ const DashboardContent = memo(({ apiUrl }) => {
 
     const lastUpdated = useMemo(() => {
         if (!data?.power?.processingTimestamp) return 'N/A';
-        return new Date(data.power.processingTimestamp).toLocaleString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        });
+        return formatLastUpdated(data.power.processingTimestamp);
     }, [data?.power?.processingTimestamp]);
 
     if (error && !data) {
@@ -61,14 +57,6 @@ const DashboardContent = memo(({ apiUrl }) => {
                             </span>
                             <span>Last updated: {lastUpdated}</span>
                         </div>
-                    </div>
-                    <div className="mt-4 sm:mt-0">
-                        <button onClick={refetch} disabled={loading} className="btn-modern primary disabled:opacity-50">
-                            <svg className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Refresh
-                        </button>
                     </div>
                 </div>
             </div>

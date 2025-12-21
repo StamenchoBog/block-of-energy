@@ -11,6 +11,7 @@ import {
     Filler
 } from 'chart.js';
 import { memo, useMemo } from 'react';
+import { formatChartTime, formatChartDate } from '../../hooks/useFormatters';
 
 ChartJS.register(
     CategoryScale,
@@ -33,15 +34,8 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
             new Date(a.timestamp) - new Date(b.timestamp)
         );
 
-        const labels = sortedData.map(item => {
-            try {
-                const date = new Date(item.timestamp);
-                if (isNaN(date.getTime())) return 'Invalid';
-                return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-            } catch {
-                return 'Invalid';
-            }
-        });
+        // Use centralized formatters for consistent time display
+        const labels = sortedData.map(item => formatChartTime(item.timestamp));
 
         // Find anomaly timestamps for highlighting
         const anomalyTimestamps = new Set(anomalies.map(a => a.timestamp));
@@ -235,7 +229,7 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
                         </span>
                     </div>
                     <span className="text-xs text-gray-400">
-                        Trained: {new Date(modelInfo.last_trained).toLocaleDateString()}
+                        Trained: {formatChartDate(modelInfo.last_trained)}
                     </span>
                 </div>
             )}

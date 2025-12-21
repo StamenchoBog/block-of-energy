@@ -18,6 +18,7 @@ async def train_models_job():
             forecaster_success = await forecaster.train_async(data)
             if forecaster_success:
                 logger.info("Forecaster training successful")
+                await forecaster.warm_cache()
 
             anomaly_success = await anomaly_detector.train_async(data)
             if anomaly_success:

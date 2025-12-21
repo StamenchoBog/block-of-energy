@@ -17,7 +17,10 @@ class AnomalyDetector(BaseModelAsync):
     def __init__(self):
         super().__init__()
         # Contamination is the expected proportion of anomalies
-        self.contamination = 0.05  # 5% of data expected to be anomalies
+        # Using "auto" lets the algorithm decide based on data distribution
+        self.contamination = "auto"
+        # Minimum power difference (watts) to consider as anomaly
+        self.min_power_diff = 50
 
     async def train_async(self, data: List[Dict[str, Any]]) -> bool:
         """Async training method that runs in thread pool."""
@@ -102,9 +105,13 @@ class AnomalyDetector(BaseModelAsync):
         threshold = 1 - sensitivity  # Higher sensitivity = lower threshold
 
         for i, (pred, score) in enumerate(zip(predictions, normalized_scores)):
-            if pred == -1 or score > threshold:
-                actual = df.iloc[i]["value"]
-                expected = df.iloc[i]["expected"]
+            actual = df.iloc[i]["value"]
+            expected = df.iloc[i]["expected"]
+            power_diff = abs(actual - expected)
+            is_statistical_anomaly = pred == -1 and score > threshold
+            is_significant_change = power_diff >= self.min_power_diff
+
+            if is_statistical_anomaly and is_significant_change:
                 timestamp = df.iloc[i]["timestamp"]
 
                 # Classify anomaly type
