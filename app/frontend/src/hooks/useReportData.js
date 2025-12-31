@@ -1,168 +1,81 @@
 import { useState, useCallback } from 'react';
 import { fetchReportData } from '../lib/apiService';
-import { format, getISOWeek, startOfISOWeek, setISOWeek, setYear } from 'date-fns';
+import {
+    format,
+    getISOWeek,
+    startOfISOWeek,
+    endOfISOWeek,
+    startOfMonth,
+    endOfMonth,
+    eachHourOfInterval,
+    eachDayOfInterval,
+    setHours,
+    parseISO,
+    setISOWeek,
+    setISOWeekYear
+} from 'date-fns';
 
 /**
- * Format a date as YYYY-MM-DD using local time (not UTC)
- * Uses date-fns format function
+ * Generate full time range for a report type
  */
-function formatLocalDate(date) {
-    return format(date, 'yyyy-MM-dd');
-}
-
-/**
- * Get the Monday of a given ISO week number
- * @param {number} week - ISO week number (1-53)
- * @param {number} year - Year
- * @returns {Date} The Monday of that week
- */
-function getWeekStart(week, year) {
-    // Create a date in the target year, set the ISO week, then get the start of that week
-    const date = setYear(setISOWeek(new Date(), week), year);
-    return startOfISOWeek(date);
-}
-
-/**
- * Fill gaps in report data with null values
- * Creates a complete time series with null for missing data points
- *
- * @param {Array} data - Sparse data array with { timestamp, power } objects
- * @param {string} type - Report type: 'daily' | 'weekly' | 'monthly'
- * @param {Object} rangeInfo - Contains baseDate, week, month, year
- * @returns {Array} Complete array with all expected time slots, nulls for missing
- */
-function fillDataGaps(data, type, rangeInfo) {
-    if (!data || data.length === 0) return data;
-
-    // Build a Map for O(1) lookup of existing data
-    // Use formatLocalDate to avoid timezone issues with toISOString()
-    const dataMap = new Map();
-    data.forEach(item => {
-        const date = new Date(item.timestamp);
-        let key;
-
-        if (type === 'daily') {
-            key = date.getHours();
-        } else {
-            // For weekly/monthly, use local YYYY-MM-DD as key
-            key = formatLocalDate(date);
-        }
-        dataMap.set(key, item);
-    });
-
-    const result = [];
+function generateTimeRange(type, params) {
+    const now = new Date();
 
     if (type === 'daily') {
-        // Generate all 24 hours
-        const baseDate = rangeInfo.baseDate || new Date();
-        for (let hour = 0; hour < 24; hour++) {
-            const existing = dataMap.get(hour);
-            if (existing) {
-                result.push(existing);
-            } else {
-                const timestamp = new Date(baseDate);
-                timestamp.setHours(hour, 0, 0, 0);
-                result.push({
-                    timestamp: timestamp.toISOString(),
-                    power: null
-                });
-            }
-        }
-    } else if (type === 'weekly') {
-        // Generate 7 days starting from Monday of the week
-        const weekStart = getWeekStart(rangeInfo.week, rangeInfo.year);
-
-        for (let day = 0; day < 7; day++) {
-            const currentDate = new Date(weekStart);
-            currentDate.setDate(weekStart.getDate() + day);
-            currentDate.setHours(12, 0, 0, 0);
-            const dateKey = formatLocalDate(currentDate);
-
-            const existing = dataMap.get(dateKey);
-            if (existing) {
-                result.push(existing);
-            } else {
-                result.push({
-                    timestamp: currentDate.toISOString(),
-                    power: null
-                });
-            }
-        }
-    } else if (type === 'monthly') {
-        // Generate all days in the month
-        const year = rangeInfo.year;
-        const month = rangeInfo.month - 1; // JS months are 0-indexed
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const currentDate = new Date(year, month, day, 12, 0, 0);
-            const dateKey = formatLocalDate(currentDate);
-
-            const existing = dataMap.get(dateKey);
-            if (existing) {
-                result.push(existing);
-            } else {
-                result.push({
-                    timestamp: currentDate.toISOString(),
-                    power: null
-                });
-            }
-        }
-    } else {
-        // Unknown type, return original data
-        return data;
+        const baseDate = params.date ? parseISO(params.date) : now;
+        return eachHourOfInterval({
+            start: setHours(baseDate, 0),
+            end: setHours(baseDate, 23)
+        });
     }
 
-    return result;
+    if (type === 'weekly') {
+        const dateInWeek = setISOWeek(setISOWeekYear(new Date(), params.year), params.week);
+        return eachDayOfInterval({
+            start: startOfISOWeek(dateInWeek),
+            end: endOfISOWeek(dateInWeek)
+        });
+    }
+
+    if (type === 'monthly') {
+        const monthDate = new Date(params.year, params.month - 1, 1);
+        return eachDayOfInterval({
+            start: startOfMonth(monthDate),
+            end: endOfMonth(monthDate)
+        });
+    }
+
+    return [];
 }
 
 /**
- * Transform report data to chart-compatible format
- * @param {Array} data - Raw report data from API
- * @param {string} type - Report type (daily|weekly|monthly)
- * @param {string} dateParam - The date parameter used for the request
- * @param {Object} rangeInfo - Additional range info (week, month, year)
- * @returns {Array} Chart-compatible data with { timestamp, power }
+ * Transform API data and fill full range with nulls for gaps
  */
-function transformReportToChartData(data, type, dateParam, rangeInfo = {}) {
-    if (!Array.isArray(data) || data.length === 0) return [];
-
-    const baseDate = dateParam ? new Date(dateParam) : new Date();
-
-    const sparseData = data.map(item => {
-        let timestamp;
-
-        switch (type) {
-            case 'daily':
-                // hour is 0-23, create timestamp for the selected date at that hour
-                timestamp = new Date(baseDate);
-                timestamp.setHours(item.hour || 0, 0, 0, 0);
-                break;
-            case 'weekly':
-            case 'monthly':
-                // date is YYYY-MM-DD string
-                timestamp = item.date ? new Date(item.date + 'T12:00:00') : new Date();
-                break;
-            default:
-                timestamp = new Date();
-        }
-
-        return {
-            timestamp: timestamp.toISOString(),
-            power: item.peakPower || item.power || 0
-        };
+function transformToChartData(apiData, type, params) {
+    // Build lookup from API data
+    const dataMap = new Map();
+    (apiData || []).forEach(item => {
+        const key = type === 'daily' ? item.hour : item.date;
+        dataMap.set(key, item.peakPower ?? item.power ?? 0);
     });
 
-    // Fill gaps with null values for missing time slots
-    return fillDataGaps(sparseData, type, { ...rangeInfo, baseDate });
+    // Generate full range with data or null
+    return generateTimeRange(type, params).map(date => {
+        const key = type === 'daily'
+            ? date.getHours()
+            : format(date, 'yyyy-MM-dd');
+
+        return {
+            timestamp: date.toISOString(),
+            power: dataMap.has(key) ? dataMap.get(key) : null
+        };
+    });
 }
 
 /**
- * Hook for fetching report data with time range support
- * @param {string} apiUrl - Optional API base URL
- * @returns {Object} { data, loading, error, activeRange, fetchData }
+ * Hook for fetching report data with time range support.
  */
-export function useReportData(apiUrl = '') {
+export function useReportData() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -173,42 +86,25 @@ export function useReportData(apiUrl = '') {
         setError(null);
 
         try {
-            // Map UI range to API type
             const typeMap = { day: 'daily', week: 'weekly', month: 'monthly' };
-            const params = { type: typeMap[range] || 'daily' };
-
-            // Build date parameters based on range
+            const type = typeMap[range] || 'daily';
             const now = new Date();
 
+            const params = { type };
             if (range === 'day') {
                 params.date = format(now, 'yyyy-MM-dd');
             } else if (range === 'week') {
-                params.week = getISOWeek(now).toString();
-                params.year = now.getFullYear().toString();
+                params.week = getISOWeek(now);
+                params.year = now.getFullYear();
             } else if (range === 'month') {
-                params.month = (now.getMonth() + 1).toString();
-                params.year = now.getFullYear().toString();
+                params.month = now.getMonth() + 1;
+                params.year = now.getFullYear();
             }
 
             const response = await fetchReportData(params);
+            const apiData = response?.data || response || [];
 
-            if (response) {
-                const reportData = response.data || response;
-                if (Array.isArray(reportData)) {
-                    const rangeInfo = {
-                        week: params.week ? parseInt(params.week) : undefined,
-                        month: params.month ? parseInt(params.month) : undefined,
-                        year: params.year ? parseInt(params.year) : now.getFullYear()
-                    };
-                    const chartData = transformReportToChartData(reportData, params.type, params.date, rangeInfo);
-                    setData(chartData);
-                } else {
-                    setData([]);
-                }
-            } else {
-                setData([]);
-            }
-
+            setData(transformToChartData(Array.isArray(apiData) ? apiData : [], type, params));
             setActiveRange(range);
         } catch (err) {
             console.error('Report fetch error:', err);

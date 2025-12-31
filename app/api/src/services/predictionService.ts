@@ -11,7 +11,8 @@ class PredictionServiceError extends Error {
     constructor(
         message: string,
         public statusCode: number = 502,
-        public isServiceUnavailable: boolean = false
+        public isServiceUnavailable: boolean = false,
+        public errorCode?: string
     ) {
         super(message);
         this.name = 'PredictionServiceError';
@@ -53,11 +54,18 @@ class PredictionService {
                 const statusCode = error.response.status;
                 const data = error.response.data as Record<string, unknown> | undefined;
                 const message = data?.detail || data?.error || error.message;
+                const errorCode = data?.error_code as string | undefined;
                 logger.error(`Prediction service error during ${operation}:`, {
                     statusCode,
                     message,
+                    errorCode,
                 });
-                throw new PredictionServiceError(String(message), statusCode >= 500 ? 502 : statusCode);
+                throw new PredictionServiceError(
+                    String(message),
+                    statusCode >= 500 ? 502 : statusCode,
+                    false,
+                    errorCode
+                );
             }
         }
 
@@ -65,11 +73,11 @@ class PredictionService {
         throw new PredictionServiceError('Unexpected error communicating with prediction service');
     }
 
-    async getForecast(hours: number = 24): Promise<ForecastResponse> {
+    async getForecast(hours: number = 24, pastContextHours: number = 0): Promise<ForecastResponse> {
         try {
-            logger.info('Fetching forecast from prediction service', { hours });
+            logger.info('Fetching forecast from prediction service', { hours, pastContextHours });
             const response = await this.client.get<ForecastResponse>('/forecast', {
-                params: { hours },
+                params: { hours, past_context_hours: pastContextHours },
             });
             return response.data;
         } catch (error) {

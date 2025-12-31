@@ -7,6 +7,7 @@ import dashboardRoutes from "./routes/dashboardRoutes";
 import predictionRoutes from "./routes/predictionRoutes";
 import { logStream } from './config/logger';
 import logger from './config/logger';
+import cacheService from './services/cacheService';
 
 const app: express.Application = express();
 
@@ -32,7 +33,6 @@ app.use(morgan('combined', {
 
 // Set up scheduled tasks
 setInterval(() => {
-  const cacheService = require('./services/cacheService').default;
   cacheService.cleanup();
 }, 60 * 60 * 1000);
 

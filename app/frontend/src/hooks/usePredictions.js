@@ -1,154 +1,59 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { usePredictionOperation } from './useAsyncOperation';
 import { fetchForecast, fetchAnomalies } from '../lib/apiService';
 
 /**
- * Custom hook for fetching prediction data (forecasts and anomalies)
- * Now with granular error state tracking (training vs unavailable vs error)
+ * Custom hook for fetching prediction data (forecasts and anomalies).
+ * Uses usePredictionOperation for consistent async state management.
  */
 export function usePredictions() {
-    const [forecast, setForecast] = useState(null);
-    const [anomalies, setAnomalies] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [serviceAvailable, setServiceAvailable] = useState(true);
-    const [isTraining, setIsTraining] = useState(false);
+    // Separate state machines for forecast and anomalies
+    const forecastOp = usePredictionOperation();
+    const anomaliesOp = usePredictionOperation();
 
-    /**
-     * Determines the combined service state from forecast and anomaly results.
-     * Priority: data available > training > other errors
-     *
-     * @param {Object} forecastResult - { data, error?: { type, message } }
-     * @param {Object} anomaliesResult - { data, error?: { type, message } }
-     * @returns {{ isTraining: boolean, serviceAvailable: boolean, errorMessage: string | null }}
-     */
-    const determineServiceState = (forecastResult, anomaliesResult) => {
-        const hasData = forecastResult.data !== null || anomaliesResult.data !== null;
-        const forecastTraining = forecastResult.error?.type === 'training';
-        const anomaliesTraining = anomaliesResult.error?.type === 'training';
-        const anyTraining = forecastTraining || anomaliesTraining;
+    // Extract stable function references to avoid infinite re-render loops
+    const { executePrediction: execForecast, resetPrediction: resetForecast } = forecastOp;
+    const { executePrediction: execAnomalies, resetPrediction: resetAnomalies } = anomaliesOp;
 
-        // If we have any data, service is available (partial success is still success)
-        if (hasData) {
-            return {
-                isTraining: anyTraining,
-                serviceAvailable: true,
-                errorMessage: null
-            };
-        }
+    // Derive combined state from both operations
+    const loading = forecastOp.loading || anomaliesOp.loading;
+    const isTraining = forecastOp.isTraining || anomaliesOp.isTraining;
 
-        // No data available - check if it's due to training
-        if (anyTraining) {
-            return {
-                isTraining: true,
-                serviceAvailable: false,
-                errorMessage: null
-            };
-        }
+    // Service is available if either has data or is just training
+    const serviceAvailable = useMemo(() => {
+        const hasData = forecastOp.data !== null || anomaliesOp.data !== null;
+        if (hasData) return true;
+        // If both are unavailable (not just training), service is down
+        return forecastOp.serviceAvailable || anomaliesOp.serviceAvailable || isTraining;
+    }, [forecastOp.data, forecastOp.serviceAvailable, anomaliesOp.data, anomaliesOp.serviceAvailable, isTraining]);
 
-        // Both failed with non-training errors
-        const errorMessage = forecastResult.error?.message ||
-            anomaliesResult.error?.message ||
-            'Prediction service unavailable';
-
-        return {
-            isTraining: false,
-            serviceAvailable: false,
-            errorMessage
-        };
-    };
+    // Combine errors (prefer non-null)
+    const error = forecastOp.error || anomaliesOp.error;
 
     const fetchForecastData = useCallback(async (hours = 24) => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const result = await fetchForecast(hours);
-            if (result.data) {
-                setForecast(result.data);
-                setServiceAvailable(true);
-                setIsTraining(false);
-            } else if (result.error) {
-                setIsTraining(result.error.type === 'training');
-                setServiceAvailable(false);
-                if (result.error.type !== 'training') {
-                    setError(result.error.message);
-                }
-            }
-        } catch (err) {
-            setError(err.message || 'Failed to fetch forecast');
-            console.error('Forecast fetch error:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        await execForecast(() => fetchForecast(hours));
+    }, [execForecast]);
 
     const fetchAnomaliesData = useCallback(async (hours = 24, sensitivity = 0.8) => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const result = await fetchAnomalies(hours, sensitivity);
-            if (result.data) {
-                setAnomalies(result.data);
-                setServiceAvailable(true);
-                setIsTraining(false);
-            } else if (result.error) {
-                setIsTraining(result.error.type === 'training');
-                setServiceAvailable(false);
-                if (result.error.type !== 'training') {
-                    setError(result.error.message);
-                }
-            }
-        } catch (err) {
-            setError(err.message || 'Failed to fetch anomalies');
-            console.error('Anomalies fetch error:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        await execAnomalies(() => fetchAnomalies(hours, sensitivity));
+    }, [execAnomalies]);
 
     const fetchAllPredictions = useCallback(async (hours = 24, sensitivity = 0.8) => {
-        setLoading(true);
-        setError(null);
-
-        try {
-            const [forecastResult, anomaliesResult] = await Promise.all([
-                fetchForecast(hours),
-                fetchAnomalies(hours, sensitivity)
-            ]);
-
-            if (forecastResult.data) {
-                setForecast(forecastResult.data);
-            }
-            if (anomaliesResult.data) {
-                setAnomalies(anomaliesResult.data);
-            }
-
-            // Determine combined service state
-            const state = determineServiceState(forecastResult, anomaliesResult);
-            setIsTraining(state.isTraining);
-            setServiceAvailable(state.serviceAvailable);
-            if (state.errorMessage) {
-                setError(state.errorMessage);
-            }
-        } catch (err) {
-            setError(err.message || 'Failed to fetch predictions');
-            console.error('Predictions fetch error:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        // Fetch both in parallel
+        await Promise.all([
+            execForecast(() => fetchForecast(hours)),
+            execAnomalies(() => fetchAnomalies(hours, sensitivity))
+        ]);
+    }, [execForecast, execAnomalies]);
 
     const clearPredictions = useCallback(() => {
-        setForecast(null);
-        setAnomalies(null);
-        setError(null);
-        setIsTraining(false);
-    }, []);
+        resetForecast();
+        resetAnomalies();
+    }, [resetForecast, resetAnomalies]);
 
     return {
-        forecast,
-        anomalies,
+        forecast: forecastOp.data,
+        anomalies: anomaliesOp.data,
         loading,
         error,
         serviceAvailable,

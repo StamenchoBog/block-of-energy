@@ -1,4 +1,5 @@
 import { MongoClient, Db } from 'mongodb';
+import logger from './logger';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -31,7 +32,7 @@ async function connectToDatabase(): Promise<Db> {
 
         return db;
     } catch (error) {
-        console.error('Database connection error:', error);
+        logger.error('Database connection error:', error);
         throw error;
     }
 }
@@ -52,10 +53,14 @@ async function createIndexes(db: Db): Promise<void> {
             { 'payload.timestamp': -1 },
             { background: true, name: 'idx_payload_timestamp' }
         );
+        await collection.createIndex(
+            { deviceId: 1, processingTimestamp: -1 },
+            { background: true, name: 'idx_deviceId_timestamp' }
+        );
 
-        console.log('Database indexes created successfully');
+        logger.info('Database indexes created successfully');
     } catch (error) {
-        console.log('Index creation skipped (may already exist):', error);
+        logger.debug('Index creation skipped (may already exist):', error);
     }
 }
 
@@ -71,7 +76,7 @@ export async function closeDatabase(): Promise<void> {
         await client.close();
         isConnected = false;
         database = null;
-        console.log('Database connection closed');
+        logger.info('Database connection closed');
     }
 }
 

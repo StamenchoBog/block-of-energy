@@ -67,6 +67,13 @@ export interface DashboardSummary {
         voltage: number;
         energy: number;
     }[];
+
+    estimatedCost?: {
+        value: number;
+        currency: string;
+        confidence: 'low' | 'medium' | 'high';
+        projectedDaily: number;
+    };
 }
 
 export type ApiRequest = Request;

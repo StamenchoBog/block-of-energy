@@ -1,8 +1,8 @@
 ---
 import DashboardLayout from '../components/layouts/DashboardLayout.astro';
-import DashboardContent from '../components/dashboard/DashboardContent';
+import ReportsContainer from '../components/reports/ReportsContainer.jsx';
 ---
 
-<DashboardLayout title="Energy Dashboard" activeNav='overview'>
-	<DashboardContent client:load />
+<DashboardLayout title="Energy Reports">
+    <ReportsContainer client:load />
 </DashboardLayout>

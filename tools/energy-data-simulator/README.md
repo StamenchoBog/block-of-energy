@@ -1,188 +1,167 @@
-# Enhanced Energy Data Simulator
+# Multi-Device Energy Simulator
 
-Advanced energy data simulator for the Block of Energy platform with realistic patterns and blockchain integration.
+Realistic energy data simulator for the Block of Energy platform. Simulates a **3-person household** with individual smart plugs and a whole-house energy meter.
 
-## Features
+## Simulated Devices
 
-- **Multi-Device Simulation**: Simulates consumption, production, storage, and transmission devices
-- **Realistic Patterns**: Time-of-day, seasonal, weather, and demand response patterns
-- **Blockchain Integration**: Generates hashes for blockchain verification
-- **Azure IoT Hub Support**: Direct integration with Azure IoT Hub
-- **Batch Processing**: Optimized for high-throughput scenarios
+| Device | Type | MQTT Topic | Behavior |
+|--------|------|------------|----------|
+| Dishwasher | Tasmota Plug | `tele/tasmota_dishwasher_001/SENSOR` | Runs every 2nd day (evening) |
+| Water Heater | Tasmota Plug | `tele/tasmota_boiler_001/SENSOR` | Heats during low tariff hours |
+| Air Conditioner | Tasmota Plug | `tele/tasmota_ac_001/SENSOR` | Runs continuously (heating mode) |
+| Washing Machine | Tasmota Plug | `tele/tasmota_washer_001/SENSOR` | Runs every 2nd day |
+| Whole House | Shelly Pro 3EM | `shellypro3em-house001/status/em:0` | 3-phase total consumption |
 
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 18.0.0 or higher
-- MQTT broker (local or cloud)
+- MQTT broker running on `localhost:1883`
 
 ### Installation
 
 ```bash
+cd tools/energy-data-simulator
 npm install
 ```
 
-### Basic Usage
+### Run the Simulator
 
 ```bash
-# Start with default configuration (local MQTT)
 npm start
-
-# Or run directly
-node enhanced-simulator.js
 ```
 
-### Azure IoT Hub Integration
+### Expected Output
 
-```bash
-# Set Azure IoT Hub connection string
-export AZURE_IOT_CONNECTION_STRING="HostName=your-iothub.azure-devices.net;DeviceId=your-device;SharedAccessKey=your-key"
-
-# Run simulator
-npm start
+```text
+╔══════════════════════════════════════════════════════════════╗
+║           ENERGY SIMULATOR STATUS                             ║
+╠══════════════════════════════════════════════════════════════╣
+║ Uptime: 0h 5m 30s | Messages:      120                        ║
+╠══════════════════════════════════════════════════════════════╣
+║ 🟢 Dishwasher          wash         1850W                     ║
+║ ⚪ Water Heater        standby         1W                     ║
+║ 🟢 Air Conditioner     heating_mid  1200W                     ║
+║ ⚪ Washing Machine     standby         1W                     ║
+╠══════════════════════════════════════════════════════════════╣
+║ 📊 Whole House: 3450W total                                   ║
+║    Phase A: 2100W | Phase B: 650W | Phase C: 700W             ║
+╚══════════════════════════════════════════════════════════════╝
 ```
 
 ## Configuration
 
-### Environment Variables
+Copy `.env.example` to `.env`:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MQTT_BROKER` | MQTT broker URL | `mqtt://localhost:1883` |
-| `MQTT_TOPIC` | Base MQTT topic | `tele/tasmota_monitor_000001/SENSOR` |
-| `AZURE_IOT_CONNECTION_STRING` | Azure IoT Hub connection | None |
-
-### Device Configuration
-
-Edit the `CONFIG.devices` array in `enhanced-simulator.js`:
-
-```javascript
-devices: [
-    { id: 'sensor001', location: 'Main Building', type: 'consumption' },
-    { id: 'sensor002', location: 'Solar Panels', type: 'production' },
-    { id: 'sensor003', location: 'Battery Storage', type: 'storage' },
-    { id: 'sensor004', location: 'Grid Connection', type: 'transmission' }
-]
+```bash
+cp .env.example .env
 ```
 
-## Simulation Patterns
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MQTT_BROKER` | `mqtt://localhost:1883` | MQTT broker URL |
+| `PUBLISH_INTERVAL_MS` | `10000` | Time between readings (ms) |
+| `TASMOTA_*_ID` | Device-specific | Tasmota device IDs |
+| `SHELLY_3EM_ID` | `shellypro3em-house001` | Shelly 3EM device ID |
 
-### Energy Types
+## Device Behaviors
 
-- **Consumption**: Residential/commercial usage patterns
-- **Production**: Solar/wind generation patterns
-- **Storage**: Battery charge/discharge patterns
-- **Transmission**: Grid distribution patterns
+### Dishwasher
 
-### Pattern Factors
+- Schedule: Every 2nd day, 7-9 PM
+- Cycle: ~109 min (fill → heat → wash → rinse → dry)
+- Power: 80W pumping, 1800W heating, 150W washing, 600W drying
 
-1. **Time-of-Day**: Peak usage during morning and evening
-2. **Seasonal**: Higher consumption in winter, higher production in summer
-3. **Weather**: Cloud cover affects solar production
-4. **Weekend**: Different patterns on weekends
-5. **Demand Response**: Smart grid response patterns
+### Water Heater (Boiler)
 
-## Output
+- Schedule: Low tariff hours (22:00-06:00 weekdays, all day weekends)
+- Behavior: Heats 80L tank to 60°C with heat loss simulation
+- Power: 2400W when heating
 
-### Message Structure
+### Air Conditioner
+
+- Schedule: Continuous (heating season)
+- Behavior: Inverter with power modulation based on temperature
+- Power: 800-2400W, includes defrost cycles below 0°C
+
+### Washing Machine
+
+- Schedule: Every 2nd day, morning or evening
+- Cycle: ~85 min (fill → heat → wash → rinse × 3 → spin)
+- Power: 100W pump, 2000W heating, 500W wash, 400W spin
+
+### Shelly Pro 3EM (Whole House)
+
+- 3-phase power readings (A, B, C)
+- Base load: Always-on devices (fridge, router, lights)
+- Aggregates individual devices + household base load
+
+## Message Formats
+
+### Tasmota SENSOR Format
 
 ```json
 {
-  "deviceId": "sensor001",
-  "deviceType": "consumption",
-  "location": "Main Building",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "energy": {
-    "power": 450,
-    "voltage": 230,
-    "current": 2.087,
-    "powerFactor": 0.94,
-    "frequency": 50.0,
-    "apparentPower": 479,
-    "reactivePower": 164
-  },
-  "status": {
-    "uptime": 86400,
-    "signalStrength": -52,
-    "batteryLevel": null,
-    "temperature": 22.5,
-    "humidity": 45.2
+  "Time": "2024-01-15 14:30:00",
+  "ENERGY": {
+    "Total": 125.432,
+    "Today": 4.567,
+    "Power": 1850,
+    "Voltage": 230,
+    "Current": 8.04,
+    "Factor": 0.90
   }
 }
 ```
 
-### Blockchain Hash Records
+### Shelly Pro 3EM Format
 
 ```json
 {
-  "id": "sensor001-1705320600000",
-  "hashValue": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "deviceID": "sensor001",
-  "dataType": "consumption"
+  "a_act_power": 1850.5,
+  "b_act_power": 680.3,
+  "c_act_power": 620.0,
+  "total_act_power": 3150.8
 }
 ```
 
-## Integration with Block of Energy
+## Project Structure
 
-### With Local Blockchain
-
-1. Start the simulator
-2. Messages are automatically hashed for blockchain storage
-3. Use `../verify-hash/verify-hash.js` to verify message integrity
-
-### With Azure Production
-
-1. Set Azure IoT connection string
-2. Deploy to Azure Container Instances or VM
-3. Integrate with Azure Functions for processing
-
-## Monitoring
-
-The simulator outputs:
-- Real-time device readings
-- Batch processing status
-- MQTT connection status
-- File output locations
-
-## Troubleshooting
-
-### MQTT Connection Issues
-
-```bash
-# Test MQTT connectivity
-mosquitto_pub -h localhost -p 1883 -t test/topic -m "test message"
+```text
+energy-data-simulator/
+├── config/
+│   ├── devices.js         # Device profiles & schedules
+│   └── environment.js     # Environment config loader
+├── simulators/
+│   ├── BaseAppliance.js   # Base class for Tasmota devices
+│   ├── DishwasherSimulator.js
+│   ├── WaterHeaterSimulator.js
+│   ├── AirConditionerSimulator.js
+│   ├── WashingMachineSimulator.js
+│   ├── ShellyPro3EMSimulator.js
+│   └── index.js
+├── multi-device-simulator.js  # Main entry point
+├── .env.example
+└── package.json
 ```
 
-### Azure IoT Hub Issues
+## Plug-and-Play Architecture
 
-```bash
-# Verify connection string format
-echo $AZURE_IOT_CONNECTION_STRING
+The simulator outputs **identical message formats** to real Tasmota and Shelly devices:
+
+```text
+DEVELOPMENT:  Simulator → MQTT → Processor → MongoDB
+PRODUCTION:   Real Devices → MQTT → Processor → MongoDB
 ```
 
-## Advanced Usage
+**To switch to real devices:** Stop the simulator, configure your devices with matching MQTT topics—no code changes needed.
 
-### Custom Energy Patterns
+## Tariff Schedule (Macedonia EVN)
 
-Extend the `EnergyPatternGenerator` class to add custom patterns:
+| Day | Low Tariff Hours |
+|-----|------------------|
+| Weekdays | 22:00 - 06:00 |
+| Weekends | All day |
 
-```javascript
-getCustomPattern(timestamp) {
-    // Your custom logic here
-    return customFactor;
-}
-```
-
-### Integration with External APIs
-
-Add weather data, market prices, or other external factors:
-
-```javascript
-async getWeatherData() {
-    // Fetch real weather data
-    const response = await fetch('weather-api-url');
-    return await response.json();
-}
-```
+Water heater schedules heating during low tariff periods.

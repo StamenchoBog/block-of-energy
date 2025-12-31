@@ -5,6 +5,7 @@ import logging
 import asyncio
 
 from app.config import settings
+from app.exceptions import DatabaseConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class DataService:
     def connect(self, client: AsyncIOMotorClient):
         """Set the MongoDB client connection with connection pooling."""
         self._client = client
-        self._db = client[settings.MONGODB_DATABASE]
+        self._db = client[settings.DATABASE_NAME]
         # Create indexes for better query performance
         asyncio.create_task(self._create_indexes())
 
@@ -41,8 +42,8 @@ class DataService:
     def collection(self):
         """Get the sensor measurements collection."""
         if self._db is None:
-            raise RuntimeError("Database not connected. Call connect() first.")
-        return self._db[settings.MONGODB_COLLECTION]
+            raise DatabaseConnectionError("Database not connected. Call connect() first.")
+        return self._db[settings.DATABASE_COLLECTION]
 
     async def _fetch_and_transform_data(
         self, start_date: datetime, limit: int = None
@@ -91,6 +92,39 @@ class DataService:
         )
         logger.info(f"Fetched {len(data)} recent data points (last {hours} hours)")
         return data
+
+    async def get_data_age_days(self) -> float:
+        """Get the age of the oldest data point in days."""
+        try:
+            oldest_doc = await self.collection.find_one(
+                {"payload.ENERGY.Power": {"$exists": True}},
+                {"processingTimestamp": 1, "_id": 0},
+                sort=[("processingTimestamp", 1)]
+            )
+
+            if not oldest_doc:
+                return 0.0
+
+            oldest_timestamp = datetime.fromisoformat(
+                oldest_doc["processingTimestamp"].replace("Z", "+00:00")
+            )
+            age = datetime.utcnow() - oldest_timestamp.replace(tzinfo=None)
+            return age.total_seconds() / (24 * 3600)
+        except Exception as e:
+            logger.error(f"Failed to get data age: {e}")
+            return 0.0
+
+    async def has_sufficient_data(self) -> tuple[bool, float, int]:
+        """
+        Check if we have enough historical data for reliable predictions.
+
+        Returns:
+            Tuple of (is_sufficient, days_available, days_required)
+        """
+        days_available = await self.get_data_age_days()
+        days_required = settings.MIN_RELIABLE_DATA_DAYS
+        is_sufficient = days_available >= days_required
+        return is_sufficient, days_available, days_required
 
 
 data_service = DataService()

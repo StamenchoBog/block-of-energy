@@ -39,23 +39,6 @@ export const TableSkeleton = memo(({ rows = 5, className = '' }) => (
 
 TableSkeleton.displayName = 'TableSkeleton';
 
-// Combined loading state - used in DashboardContent
-export const DashboardSkeleton = memo(() => (
-    <>
-        {/* Metric cards skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <CardSkeleton count={4} />
-        </div>
-        
-        {/* Chart skeleton */}
-        <div className="metric-card mb-8">
-            <ChartSkeleton withSubtitle={true} />
-        </div>
-    </>
-));
-
-DashboardSkeleton.displayName = 'DashboardSkeleton';
-
 // Report skeleton - used in ReportsContainer
 export const ReportSkeleton = memo(() => (
     <div className="p-6 animate-pulse">

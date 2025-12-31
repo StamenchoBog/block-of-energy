@@ -7,8 +7,58 @@ import logging
 
 from app.config import settings
 from app.models.base_model import BaseModelAsync
+from app.tuning.hyperparameter_tuner import tuner, DEFAULT_ISOLATION_FOREST_PARAMS
+from app.utils.feature_extraction import extract_time_series_features
+from app.exceptions import (
+    InsufficientDataError,
+    ModelNotTrainedError,
+    ModelTrainingError,
+    PredictionError,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_anomaly_threshold(sensitivity: float, normalized_scores: np.ndarray) -> float:
+    """
+    Calculate the anomaly detection threshold based on sensitivity and score distribution.
+
+    Uses a hybrid approach combining:
+    - Non-linear (quadratic) scaling to prevent overly aggressive detection
+    - Percentile-based adaptation to actual data distribution
+
+    Args:
+        sensitivity: User-provided sensitivity value (0.1 to 1.0)
+                    Higher values = more anomalies detected
+        normalized_scores: Array of normalized anomaly scores (0-1, higher = more anomalous)
+
+    Returns:
+        threshold: Score threshold above which points are flagged as anomalies
+
+    Examples:
+        sensitivity=0.8 → targets ~top 10% most anomalous points
+        sensitivity=0.5 → targets ~top 3% most anomalous points
+        sensitivity=0.2 → targets ~top 0.5% most anomalous points
+    """
+    # Quadratic scaling: makes high sensitivity values less extreme
+    # sensitivity=0.8 → scaled=0.64, sensitivity=0.5 → scaled=0.25
+    scaled_sensitivity = sensitivity ** 2
+
+    # Convert to target percentile (what percentage of points to flag)
+    # Max ~15% at sensitivity=1.0, down to ~1% at sensitivity=0.1
+    target_anomaly_percent = scaled_sensitivity * 15
+
+    # Calculate percentile threshold from actual score distribution
+    # Higher percentile = higher threshold = fewer anomalies flagged
+    percentile_rank = 100 - target_anomaly_percent
+    percentile_threshold = np.percentile(normalized_scores, percentile_rank)
+
+    # Ensure minimum threshold of 0.5 to avoid flagging normal variations
+    # Even at max sensitivity, we want scores to be notably high
+    min_threshold = 0.5
+    threshold = max(percentile_threshold, min_threshold)
+
+    return threshold
 
 
 class AnomalyDetector(BaseModelAsync):
@@ -19,17 +69,12 @@ class AnomalyDetector(BaseModelAsync):
         # Contamination is the expected proportion of anomalies
         # Using "auto" lets the algorithm decide based on data distribution
         self.contamination = "auto"
-        # Minimum power difference (watts) to consider as anomaly
-        self.min_power_diff = 50
 
     async def train_async(self, data: List[Dict[str, Any]]) -> bool:
         """Async training method that runs in thread pool."""
         async with self._training_lock:
             if len(data) < settings.MIN_TRAINING_DATA_POINTS:
-                logger.warning(
-                    f"Insufficient data to train anomaly detector: {len(data)} points"
-                )
-                return False
+                raise InsufficientDataError(len(data), settings.MIN_TRAINING_DATA_POINTS)
 
             result = await self._run_in_executor(self._train_sync, data)
             return result if result is not None else False
@@ -41,17 +86,28 @@ class AnomalyDetector(BaseModelAsync):
     def _train_sync(self, data: List[Dict[str, Any]]) -> bool:
         """Internal synchronous training method."""
         df = pd.DataFrame(data)
-        features = self._extract_features(df)
+        features = extract_time_series_features(df)
 
-        logger.info(f"Training anomaly detector on {len(features)} data points...")
+        # Load tuned hyperparameters (falls back to defaults if none cached)
+        params = tuner.get_isolation_forest_params()
+        logger.info(
+            f"Training Isolation Forest on {len(features)} data points with params: "
+            f"n_estimators={params.get('n_estimators')}, "
+            f"contamination={params.get('contamination')}, "
+            f"max_features={params.get('max_features')}"
+        )
 
         self.model = IsolationForest(
-            n_estimators=100,
-            contamination=self.contamination,
-            random_state=42,
-            n_jobs=-1,
+            n_estimators=params.get("n_estimators", 100),
+            contamination=params.get("contamination", "auto"),
+            max_features=params.get("max_features", 1.0),
+            random_state=params.get("random_state", 42),
+            n_jobs=params.get("n_jobs", -1),
         )
-        self.model.fit(features)
+        try:
+            self.model.fit(features)
+        except Exception as e:
+            raise ModelTrainingError("anomaly_detector", str(e)) from e
 
         self._update_training_status(len(features))
         logger.info("Anomaly detector training complete.")
@@ -62,8 +118,7 @@ class AnomalyDetector(BaseModelAsync):
     ) -> List[Dict[str, Any]]:
         """Async anomaly detection method that runs in thread pool."""
         if not self.is_trained or self.model is None:
-            logger.warning("Anomaly detector not trained")
-            return []
+            raise ModelNotTrainedError("anomaly_detector")
 
         if not data:
             return []
@@ -81,94 +136,63 @@ class AnomalyDetector(BaseModelAsync):
         self, data: List[Dict[str, Any]], sensitivity: float
     ) -> List[Dict[str, Any]]:
         """Internal synchronous detection method."""
-        df = pd.DataFrame(data)
-        features = self._extract_features(df)
+        try:
+            df = pd.DataFrame(data)
+            features = extract_time_series_features(df)
 
-        # Get anomaly scores (-1 for anomalies, 1 for normal)
-        predictions = self.model.predict(features)
-        # Get decision function scores (lower = more anomalous)
-        scores = self.model.decision_function(features)
+            # Get anomaly scores (-1 for anomalies, 1 for normal)
+            predictions = self.model.predict(features)
+            # Get decision function scores (lower = more anomalous)
+            scores = self.model.decision_function(features)
 
-        # Normalize scores to 0-1 range (higher = more anomalous)
-        min_score, max_score = scores.min(), scores.max()
-        if max_score != min_score:
-            normalized_scores = 1 - (scores - min_score) / (max_score - min_score)
-        else:
-            normalized_scores = np.zeros_like(scores)
+            # Normalize scores to 0-1 range (higher = more anomalous)
+            min_score, max_score = scores.min(), scores.max()
+            if max_score != min_score:
+                normalized_scores = 1 - (scores - min_score) / (max_score - min_score)
+            else:
+                normalized_scores = np.zeros_like(scores)
 
-        # Calculate expected values using rolling mean
-        df["expected"] = (
-            df["value"].rolling(window=5, min_periods=1, center=True).mean()
-        )
+            # Calculate expected values using rolling mean
+            df["expected"] = (
+                df["value"]
+                .rolling(window=settings.ROLLING_WINDOW_SIZE, min_periods=1, center=True)
+                .mean()
+            )
 
-        anomalies = []
-        threshold = 1 - sensitivity  # Higher sensitivity = lower threshold
+            anomalies = []
+            threshold = calculate_anomaly_threshold(sensitivity, normalized_scores)
 
-        for i, (pred, score) in enumerate(zip(predictions, normalized_scores)):
-            actual = df.iloc[i]["value"]
-            expected = df.iloc[i]["expected"]
-            power_diff = abs(actual - expected)
-            is_statistical_anomaly = pred == -1 and score > threshold
-            is_significant_change = power_diff >= self.min_power_diff
+            for i, (pred, score) in enumerate(zip(predictions, normalized_scores)):
+                actual = df.iloc[i]["value"]
+                expected = df.iloc[i]["expected"]
+                power_diff = abs(actual - expected)
+                is_statistical_anomaly = pred == -1 and score > threshold
+                is_significant_change = power_diff >= settings.ANOMALY_MIN_POWER_DIFF
 
-            if is_statistical_anomaly and is_significant_change:
-                timestamp = df.iloc[i]["timestamp"]
+                if is_statistical_anomaly and is_significant_change:
+                    timestamp = df.iloc[i]["timestamp"]
 
-                # Classify anomaly type
-                if actual > expected * 1.5:
-                    anomaly_type = "spike"
-                elif actual < expected * 0.5:
-                    anomaly_type = "dip"
-                else:
-                    anomaly_type = "pattern_change"
+                    # Classify anomaly type
+                    if actual > expected * settings.ANOMALY_SPIKE_THRESHOLD:
+                        anomaly_type = "spike"
+                    elif actual < expected * settings.ANOMALY_DIP_THRESHOLD:
+                        anomaly_type = "dip"
+                    else:
+                        anomaly_type = "pattern_change"
 
-                anomalies.append(
-                    {
-                        "timestamp": timestamp,
-                        "actual_power": float(actual),
-                        "expected_power": float(expected),
-                        "anomaly_score": float(score),
-                        "anomaly_type": anomaly_type,
-                    }
-                )
+                    anomalies.append(
+                        {
+                            "timestamp": timestamp,
+                            "actual_power": float(actual),
+                            "expected_power": float(expected),
+                            "anomaly_score": float(score),
+                            "anomaly_type": anomaly_type,
+                        }
+                    )
 
-        return anomalies
-
-    def _extract_features(self, df: pd.DataFrame) -> np.ndarray:
-        """
-        Extract features from time series data for anomaly detection.
-
-        Features include:
-        - Raw value
-        - Hour of day (cyclical)
-        - Day of week (cyclical)
-        - Rolling statistics
-        """
-        features = pd.DataFrame()
-
-        # Raw value
-        features["value"] = df["value"]
-
-        # Ensure timestamp is datetime
-        if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-
-        # Time-based features (cyclical encoding)
-        features["hour_sin"] = np.sin(2 * np.pi * df["timestamp"].dt.hour / 24)
-        features["hour_cos"] = np.cos(2 * np.pi * df["timestamp"].dt.hour / 24)
-        features["dow_sin"] = np.sin(2 * np.pi * df["timestamp"].dt.dayofweek / 7)
-        features["dow_cos"] = np.cos(2 * np.pi * df["timestamp"].dt.dayofweek / 7)
-
-        # Rolling statistics (handle NaN at edges)
-        features["rolling_mean"] = df["value"].rolling(window=5, min_periods=1).mean()
-        features["rolling_std"] = (
-            df["value"].rolling(window=5, min_periods=1).std().fillna(0)
-        )
-
-        # Difference from rolling mean
-        features["diff_from_mean"] = df["value"] - features["rolling_mean"]
-
-        return features.values
+            return anomalies
+        except Exception as e:
+            raise PredictionError("anomaly_detector", f"detection failed: {e}") from e
 
     def get_summary(self, anomalies: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate a summary of detected anomalies."""
@@ -179,9 +203,15 @@ class AnomalyDetector(BaseModelAsync):
         avg_score = np.mean([a["anomaly_score"] for a in anomalies])
 
         # Determine severity based on count and average score
-        if count > 10 or avg_score > 0.8:
+        if (
+            count > settings.ANOMALY_SEVERITY_HIGH_COUNT
+            or avg_score > settings.ANOMALY_SEVERITY_HIGH_SCORE
+        ):
             severity = "high"
-        elif count > 5 or avg_score > 0.6:
+        elif (
+            count > settings.ANOMALY_SEVERITY_MEDIUM_COUNT
+            or avg_score > settings.ANOMALY_SEVERITY_MEDIUM_SCORE
+        ):
             severity = "medium"
         else:
             severity = "low"

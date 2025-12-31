@@ -16,6 +16,7 @@ function handlePredictionError(error: unknown, res: ApiResponse, operation: stri
         const statusCode = error.isServiceUnavailable ? 503 : error.statusCode;
         res.status(statusCode).json({
             error: error.message,
+            error_code: error.errorCode || (error.isServiceUnavailable ? 'SERVICE_UNAVAILABLE' : undefined),
             operation,
         });
         return;
@@ -24,6 +25,7 @@ function handlePredictionError(error: unknown, res: ApiResponse, operation: stri
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
         error: 'Internal server error',
+        error_code: 'INTERNAL_ERROR',
         message,
         operation,
     });
@@ -33,21 +35,24 @@ function handlePredictionError(error: unknown, res: ApiResponse, operation: stri
 router.get('/predictions/forecast', async (req: ApiRequest, res: ApiResponse) => {
     try {
         const hours = parseInt(req.query.hours as string, 10) || 24;
+        const pastContextHours = parseInt(req.query.past_context_hours as string, 10) || 0;
 
         if (hours < 1 || hours > 168) {
             return res.status(400).json({
                 error: 'Invalid hours parameter',
+                error_code: 'INVALID_PARAMETER',
                 message: 'Hours must be between 1 and 168 (7 days)',
             });
         }
 
-        const cacheKey = `${FORECAST_CACHE_KEY}:${hours}`;
+        // Include pastContextHours in cache key for proper cache isolation
+        const cacheKey = `${FORECAST_CACHE_KEY}:${hours}:${pastContextHours}`;
         const cached = cacheService.get(cacheKey);
         if (cached) {
             return res.json(cached);
         }
 
-        const forecast = await predictionService.getForecast(hours);
+        const forecast = await predictionService.getForecast(hours, pastContextHours);
         cacheService.set(cacheKey, forecast, CACHE_TTL);
 
         res.json(forecast);
@@ -65,6 +70,7 @@ router.get('/predictions/anomalies', async (req: ApiRequest, res: ApiResponse) =
         if (hours < 1 || hours > 168) {
             return res.status(400).json({
                 error: 'Invalid hours parameter',
+                error_code: 'INVALID_PARAMETER',
                 message: 'Hours must be between 1 and 168 (7 days)',
             });
         }
@@ -72,6 +78,7 @@ router.get('/predictions/anomalies', async (req: ApiRequest, res: ApiResponse) =
         if (sensitivity < 0 || sensitivity > 1) {
             return res.status(400).json({
                 error: 'Invalid sensitivity parameter',
+                error_code: 'INVALID_PARAMETER',
                 message: 'Sensitivity must be between 0 and 1',
             });
         }

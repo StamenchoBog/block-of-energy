@@ -6,11 +6,16 @@ from typing import List, Dict, Any, Optional
 
 from app.config import settings
 from app.models.base_model import BaseModelAsync
+from app.tuning.hyperparameter_tuner import tuner, DEFAULT_PROPHET_PARAMS
+from app.exceptions import (
+    InsufficientDataError,
+    ModelNotTrainedError,
+    ModelTrainingError,
+    PredictionError,
+)
+
 
 logger = logging.getLogger(__name__)
-
-CACHE_TTL_SECONDS = 3600  # 1 hour
-MAX_FORECAST_HOURS = 168  # Cache this once, slice for smaller requests
 
 
 class EnergyForecaster(BaseModelAsync):
@@ -22,8 +27,7 @@ class EnergyForecaster(BaseModelAsync):
         """Async training method that runs Prophet training in a thread pool."""
         async with self._training_lock:
             if len(data) < settings.MIN_TRAINING_DATA_POINTS:
-                logger.warning(f"Insufficient data to train: {len(data)} points")
-                return False
+                raise InsufficientDataError(len(data), settings.MIN_TRAINING_DATA_POINTS)
 
             result = await self._run_in_executor(self._train_sync, data)
             return result if result is not None else False
@@ -42,15 +46,27 @@ class EnergyForecaster(BaseModelAsync):
         if df["ds"].dt.tz is not None:
             df["ds"] = df["ds"].dt.tz_convert(None)
 
-        logger.info(f"Training model on {len(df)} data points...")
-
-        # Initialize Prophet with energy-specific tuning
-        # yearly_seasonality=False (unless you have a year of data)
-        # daily_seasonality=True (energy usage patterns repeat daily)
-        m = Prophet(
-            daily_seasonality=True, weekly_seasonality=True, yearly_seasonality=False
+        # Load tuned hyperparameters (falls back to defaults if none cached)
+        params = tuner.get_prophet_params()
+        logger.info(
+            f"Training Prophet on {len(df)} data points with params: "
+            f"changepoint_prior_scale={params.get('changepoint_prior_scale')}, "
+            f"seasonality_prior_scale={params.get('seasonality_prior_scale')}, "
+            f"seasonality_mode={params.get('seasonality_mode')}"
         )
-        m.fit(df)
+
+        m = Prophet(
+            daily_seasonality=params.get("daily_seasonality", True),
+            weekly_seasonality=params.get("weekly_seasonality", True),
+            yearly_seasonality=params.get("yearly_seasonality", False),
+            changepoint_prior_scale=params.get("changepoint_prior_scale", 0.05),
+            seasonality_prior_scale=params.get("seasonality_prior_scale", 1.0),
+            seasonality_mode=params.get("seasonality_mode", "additive"),
+        )
+        try:
+            m.fit(df)
+        except Exception as e:
+            raise ModelTrainingError("forecaster", str(e)) from e
 
         self.model = m
         self._cache = None
@@ -62,23 +78,42 @@ class EnergyForecaster(BaseModelAsync):
         if self._cache is None:
             return None
         created_at, predictions = self._cache
-        if datetime.utcnow() - created_at > timedelta(seconds=CACHE_TTL_SECONDS):
+        if datetime.utcnow() - created_at > timedelta(
+            seconds=settings.FORECAST_CACHE_TTL_SECONDS
+        ):
             self._cache = None
             return None
         return predictions[:hours]
 
-    async def predict_async(self, hours: int = 24) -> List[Dict[str, Any]]:
-        """Async prediction method with caching."""
-        if not self.is_trained:
-            return []
+    async def predict_async(
+        self, hours: int = 24, past_context_hours: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Async prediction method.
 
+        Args:
+            hours: Number of future hours to forecast
+            past_context_hours: Number of past hours to include for context
+        """
+        if not self.is_trained:
+            raise ModelNotTrainedError("forecaster")
+
+        # When past_context is requested, skip cache for accurate time-based results
+        if past_context_hours > 0:
+            result = await self._run_in_executor(
+                self._predict_sync, hours, past_context_hours
+            )
+            return result if result else []
+
+        # Use cache only for pure future forecasts
         cached = self._get_cached(hours)
         if cached is not None:
-            logger.debug(f"Cache hit for {hours}h forecast (sliced from {MAX_FORECAST_HOURS}h)")
+            logger.debug(f"Cache hit for {hours}h forecast")
             return cached
 
         # Compute max horizon and cache it
-        result = await self._run_in_executor(self._predict_sync, MAX_FORECAST_HOURS)
+        result = await self._run_in_executor(
+            self._predict_sync, settings.MAX_FORECAST_HOURS, 0
+        )
         if result:
             self._cache = (datetime.utcnow(), result)
             return result[:hours]
@@ -88,36 +123,53 @@ class EnergyForecaster(BaseModelAsync):
         """Pre-compute max horizon predictions."""
         if not self.is_trained:
             return
-        await self.predict_async(MAX_FORECAST_HOURS)
-        logger.info(f"Cache warmed with {MAX_FORECAST_HOURS}h forecast")
+        await self.predict_async(settings.MAX_FORECAST_HOURS)
+        logger.info(f"Cache warmed with {settings.MAX_FORECAST_HOURS}h forecast")
 
     def predict(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Synchronous prediction method for backward compatibility."""
         return self._predict_sync(hours)
 
-    def _predict_sync(self, hours: int) -> List[Dict[str, Any]]:
-        """Internal synchronous prediction method."""
-        # Create future dataframe
-        future = self.model.make_future_dataframe(periods=hours, freq="H")
-        forecast = self.model.predict(future)
+    def _predict_sync(self, hours: int, past_context_hours: int = 0) -> List[Dict[str, Any]]:
+        """Internal synchronous prediction method.
 
-        # Filter only future predictions
-        now = datetime.utcnow()
-        # Note: We filter slightly loosely to ensure we cover the requested range
-        future_forecast = forecast[forecast["ds"] > (now - timedelta(hours=1))]
+        Args:
+            hours: Number of future hours to forecast
+            past_context_hours: Number of past hours to include for context (hindcast)
+        """
+        try:
+            # Create future dataframe with enough periods for the forecast
+            future = self.model.make_future_dataframe(periods=hours, freq="H")
+            forecast = self.model.predict(future)
 
-        results = []
-        for _, row in future_forecast.iterrows():
-            results.append(
-                {
-                    "timestamp": row["ds"],
-                    "predicted_power": max(0, row["yhat"]),  # No negative energy
-                    "lower_bound": max(0, row["yhat_lower"]),
-                    "upper_bound": row["yhat_upper"],
-                }
-            )
+            now = datetime.utcnow()
+            start_time = now - timedelta(hours=past_context_hours)
+            end_time = now + timedelta(hours=hours)
 
-        return results[:hours]
+            # Filter to time range and resample to hourly
+            # This handles dense training data by keeping one point per hour
+            forecast_filtered = forecast[
+                (forecast["ds"] >= start_time) & (forecast["ds"] <= end_time)
+            ].copy()
+
+            # Round timestamps to nearest hour and deduplicate
+            forecast_filtered["hour"] = forecast_filtered["ds"].dt.floor("H")
+            forecast_hourly = forecast_filtered.groupby("hour").first().reset_index()
+
+            results = []
+            for _, row in forecast_hourly.iterrows():
+                results.append(
+                    {
+                        "timestamp": row["hour"],
+                        "predicted_power": max(0, row["yhat"]),
+                        "lower_bound": max(0, row["yhat_lower"]),
+                        "upper_bound": row["yhat_upper"],
+                    }
+                )
+
+            return results
+        except Exception as e:
+            raise PredictionError("forecaster", f"forecast for {hours}h failed: {e}") from e
 
 
 # Global singleton instance
