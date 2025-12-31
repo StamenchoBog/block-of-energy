@@ -1,11 +1,10 @@
 {
   "name": "energy-data-simulator",
-  "version": "1.0.0",
-  "description": "Enhanced energy data simulator for Block of Energy platform with blockchain integration",
-  "main": "enhanced-simulator.js",
+  "version": "2.0.0",
+  "description": "Multi-device energy simulator for Block of Energy platform - simulates Tasmota plugs and Shelly Pro 3EM",
+  "main": "multi-device-simulator.js",
   "scripts": {
-    "start": "node enhanced-simulator.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node multi-device-simulator.js"
   },
   "keywords": [
     "energy",
@@ -13,11 +12,14 @@
     "blockchain",
     "iot",
     "simulation",
-    "tasmota"
+    "tasmota",
+    "shelly",
+    "smart-home"
   ],
   "author": "Block of Energy Team",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^16.3.1",
     "mqtt": "^5.3.4"
   },
   "engines": {

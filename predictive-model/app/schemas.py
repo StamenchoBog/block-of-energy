@@ -54,6 +54,15 @@ class AnomalyResponse(BaseModel):
     summary: AnomalySummary
 
 
+class DataCollectionStatus(BaseModel):
+    """Status returned when insufficient data is available for reliable predictions."""
+    status: Literal["collecting_data"] = "collecting_data"
+    days_available: float = Field(ge=0, description="Days of data currently available")
+    days_required: int = Field(ge=1, description="Days of data required for reliable predictions")
+    progress_percent: float = Field(ge=0, le=100, description="Collection progress percentage")
+    message: str = Field(description="Human-readable status message")
+
+
 class ForecastRequest(BaseModel):
     hours: int = Field(
         default=24,

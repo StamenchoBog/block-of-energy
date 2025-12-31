@@ -1,195 +1,71 @@
 import { Line } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-} from 'chart.js';
 import { memo, useMemo } from 'react';
-import { formatChartDate, formatChartTime } from '../../hooks/useFormatters';
+import { differenceInDays } from 'date-fns';
+import { toDate, formatChartDate, formatChartTime } from '../../hooks/useFormatters';
+import { getBaseChartOptions, CHART_COLORS } from './BaseChart';
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-);
+const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumption", metric = "power", unit = "W", subtitle = null }) => {
+    const hasValidData = useMemo(() =>
+        data?.some(item => item[metric] != null), [data, metric]);
 
-const EnergyChart = memo(({ data = [], loading = false, title = "Power Consumption", metric = "power", unit = "W", subtitle = null, timeRange = null }) => {
-    const hasValidData = data && Array.isArray(data) && data.length > 0;
+    const { isMultiDay, dateRangeLabel } = useMemo(() => {
+        if (!data?.length) return { isMultiDay: false, dateRangeLabel: null };
 
-    const { isMultiDay, dayCount, dateRangeLabel } = useMemo(() => {
-        if (!hasValidData || data.length < 2) {
-            return { isMultiDay: false, dayCount: 1, dateRangeLabel: null };
-        }
+        const dates = data.map(d => toDate(d.timestamp));
+        const first = dates[0], last = dates[dates.length - 1];
+        const isMulti = differenceInDays(last, first) >= 1;
 
-        const sortedData = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        const firstDate = new Date(sortedData[0].timestamp);
-        const lastDate = new Date(sortedData[sortedData.length - 1].timestamp);
-        const isMulti = firstDate.toDateString() !== lastDate.toDateString();
-
-        // Calculate actual day difference
-        const diffTime = Math.abs(lastDate - firstDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
-
-        // Create human-readable date range label using centralized formatters
-        const rangeLabel = isMulti
-            ? `${formatChartDate(firstDate)} - ${formatChartDate(lastDate)}`
-            : formatChartDate(firstDate);
-
-        return { isMultiDay: isMulti, dayCount: diffDays, dateRangeLabel: rangeLabel };
-    }, [data, hasValidData]);
+        return {
+            isMultiDay: isMulti,
+            dateRangeLabel: isMulti
+                ? `${formatChartDate(first)} - ${formatChartDate(last)}`
+                : formatChartDate(first)
+        };
+    }, [data]);
 
     const chartData = useMemo(() => {
         if (!hasValidData) return null;
 
-        const sortedData = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
         return {
-            labels: sortedData.map(item => {
-                // Use centralized formatters for consistent date/time display
-                return isMultiDay
-                    ? formatChartDate(item.timestamp)
-                    : formatChartTime(item.timestamp);
-            }),
-            datasets: [
-                {
-                    label: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (${unit})`,
-                    data: sortedData.map(item => {
-                        const value = item[metric] || item.power;
-                        // Handle null/undefined to create gaps in the chart
-                        if (value === null || value === undefined) return null;
-                        return typeof value === 'number' ? value : parseFloat(value) || 0;
-                    }),
-                    spanGaps: false, // Break line where data is null
-                    borderColor: 'rgba(14, 165, 233, 1)',
-                    backgroundColor: 'rgba(14, 165, 233, 0.08)',
-                    fill: true,
-                    tension: 0.3,
-                    borderWidth: 3,
-                    pointRadius: 0,
-                    pointHoverRadius: 8,
-                    pointBackgroundColor: 'rgba(14, 165, 233, 1)',
-                    pointBorderColor: 'rgba(255, 255, 255, 1)',
-                    pointBorderWidth: 3,
-                    pointHoverBackgroundColor: 'rgba(14, 165, 233, 1)',
-                    pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
-                    pointHoverBorderWidth: 4
-                }
-            ]
+            labels: data.map(item => isMultiDay
+                ? formatChartDate(item.timestamp)
+                : formatChartTime(item.timestamp)
+            ),
+            datasets: [{
+                label: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (${unit})`,
+                data: data.map(item => item[metric] ?? item.power),
+                spanGaps: false,
+                borderColor: CHART_COLORS.blue.border,
+                backgroundColor: CHART_COLORS.blue.background,
+                fill: true,
+                tension: 0.3,
+                borderWidth: 3,
+                pointRadius: 0,
+                pointHoverRadius: 8,
+                pointBackgroundColor: CHART_COLORS.blue.border,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 3
+            }]
         };
     }, [data, hasValidData, metric, unit, isMultiDay]);
 
-    const chartOptions = useMemo(() => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        },
+    const chartOptions = useMemo(() => getBaseChartOptions({
+        tooltipBorderColor: CHART_COLORS.blue.border,
+        maxXTicks: 8,
         plugins: {
-            legend: {
-                display: false
-            },
             tooltip: {
-                backgroundColor: 'rgba(30, 41, 59, 0.98)',
-                titleColor: '#f8fafc',
-                bodyColor: '#f8fafc',
-                borderColor: 'rgba(14, 165, 233, 0.3)',
-                borderWidth: 1,
-                cornerRadius: 12,
-                padding: 16,
                 displayColors: false,
-                titleFont: {
-                    family: 'Inter, system-ui, sans-serif',
-                    size: 14,
-                    weight: '600'
-                },
-                bodyFont: {
-                    family: 'Inter, system-ui, sans-serif',
-                    size: 13,
-                    weight: '400'
-                },
                 callbacks: {
-                    title: (context) => {
-                        const label = context[0]?.label;
-                        return label ? `Time: ${label}` : 'Time: --';
-                    },
-                    label: (context) => {
-                        const value = context.parsed.y;
-                        return `${metric.charAt(0).toUpperCase() + metric.slice(1)}: ${value.toLocaleString()} ${unit}`;
-                    }
+                    title: (ctx) => ctx[0]?.label ? `Time: ${ctx[0].label}` : 'Time: --',
+                    label: (ctx) => `${metric.charAt(0).toUpperCase() + metric.slice(1)}: ${ctx.parsed.y?.toLocaleString() ?? '--'} ${unit}`
                 }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(203, 213, 225, 0.2)',
-                    drawBorder: false
-                },
-                ticks: {
-                    color: '#64748b',
-                    font: {
-                        family: 'Inter, system-ui, sans-serif',
-                        size: 11,
-                        weight: '500'
-                    },
-                    callback: function(value) {
-                        return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toLocaleString();
-                    }
-                },
-                title: {
-                    display: false
-                }
-            },
-            x: {
-                grid: {
-                    color: 'rgba(203, 213, 225, 0.2)',
-                    drawBorder: false
-                },
-                ticks: {
-                    color: '#64748b',
-                    font: {
-                        family: 'Inter, system-ui, sans-serif',
-                        size: 11,
-                        weight: '500'
-                    },
-                    maxTicksLimit: 8
-                },
-                title: {
-                    display: false
-                }
-            }
-        },
-        elements: {
-            line: {
-                tension: 0.4
             }
         }
     }), [metric, unit]);
 
-    const displaySubtitle = useMemo(() => {
-        if (subtitle) return subtitle;
-
-        if (!isMultiDay) {
-            return dateRangeLabel ? `24-hour trend · ${dateRangeLabel}` : '24-hour trend';
-        }
-
-        // For multi-day views, show day count and date range
-        const dayLabel = dayCount === 7 ? 'Weekly' : dayCount >= 28 ? 'Monthly' : `${dayCount}-day`;
-        return `${dayLabel} trend · ${dateRangeLabel || `${dayCount} days`}`;
-    }, [subtitle, isMultiDay, dayCount, dateRangeLabel]);
+    const displaySubtitle = subtitle || (dateRangeLabel
+        ? `${isMultiDay ? (differenceInDays(toDate(data[data.length-1]?.timestamp), toDate(data[0]?.timestamp)) >= 7 ? 'Weekly' : 'Multi-day') : '24-hour'} trend · ${dateRangeLabel}`
+        : '24-hour trend');
 
     if (loading) {
         return (

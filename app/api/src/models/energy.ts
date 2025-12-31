@@ -55,4 +55,50 @@ export interface ReportResponse {
     month?: any;
     year: number | string;
     data: any[];
+    summary?: ReportSummary;
+    deviceBreakdown?: DeviceBreakdown[];
 }
+
+// Summary metrics for the report period with optional comparison
+export interface ReportSummary {
+    totalEnergy: number;
+    peakPower: number;
+    comparison?: PeriodComparison;
+}
+
+// Comparison with previous period (yesterday, last week, last month)
+export interface PeriodComparison {
+    previousPeriod: {
+        totalEnergy: number;
+        peakPower: number;
+    };
+    changes: {
+        energyChange: number;      // percentage change
+        peakPowerChange: number;   // percentage change
+    };
+    label: string;  // "vs yesterday", "vs last week", etc.
+}
+
+// Per-device energy breakdown
+export interface DeviceBreakdown {
+    deviceId: string;
+    totalEnergy: number;
+    percentage: number;
+    peakPower: number;
+}
+
+// Cost calculation types
+export interface CostBreakdown {
+    cost: number;
+    tariffType: 'low' | 'high';
+    rate: number;
+    currency: string;
+}
+
+export interface CostEstimate {
+    value: number;
+    currency: string;
+    confidence: 'low' | 'medium' | 'high';
+    projectedDaily: number;
+}
+

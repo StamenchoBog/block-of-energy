@@ -1,189 +1,133 @@
 import { Line } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-} from 'chart.js';
 import { memo, useMemo } from 'react';
-import { formatChartTime, formatChartDate } from '../../hooks/useFormatters';
+import { startOfHour } from 'date-fns';
+import { getBaseChartOptions, CHART_COLORS } from './BaseChart';
+import { parseUTC, formatUTCToLocalTime, formatUTCToLocalDate } from '../../hooks/useFormatters';
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-);
+// Chart.js registration is handled by BaseChart.jsx
+
+/** Find index where forecast starts (current hour) */
+const findNowIndex = (data) => {
+    const currentHour = startOfHour(new Date());
+    return data.findIndex(item => parseUTC(item.timestamp) >= currentHour);
+};
+
+/** Split array into past/future at index, with one overlapping point for line continuity */
+const splitAtIndex = (data, index, accessor) => ({
+    past: data.map((item, i) => i <= index ? accessor(item) : null),  // Include nowIndex for overlap
+    future: data.map((item, i) => i >= index ? accessor(item) : null)
+});
+
+/** Create dataset config */
+const createDataset = (label, data, color, options = {}) => ({
+    label,
+    data,
+    borderColor: color,
+    backgroundColor: options.fill ? color.replace('1)', '0.1)') : 'transparent',
+    fill: options.fill || false,
+    tension: options.tension || 0.3,
+    borderWidth: options.borderWidth || 2,
+    borderDash: options.dashed ? [8, 6] : undefined,
+    pointRadius: options.pointRadius || 0,
+    order: options.order || 1,
+    spanGaps: true
+});
 
 const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = false, anomalies = [] }) => {
-    const hasValidData = predictions && Array.isArray(predictions) && predictions.length > 0;
-
     const chartData = useMemo(() => {
-        if (!hasValidData) return null;
+        if (!predictions?.length) return null;
 
-        const sortedData = [...predictions].sort((a, b) =>
+        const sorted = [...predictions].sort((a, b) =>
             new Date(a.timestamp) - new Date(b.timestamp)
         );
 
-        // Use centralized formatters for consistent time display
-        const labels = sortedData.map(item => formatChartTime(item.timestamp));
+        const nowIndex = findNowIndex(sorted);
+        const labels = sorted.map(item => formatUTCToLocalTime(item.timestamp));
+        const anomalySet = new Set(anomalies.map(a => a.timestamp));
 
-        // Find anomaly timestamps for highlighting
-        const anomalyTimestamps = new Set(anomalies.map(a => a.timestamp));
+        // Split data at nowIndex
+        const power = splitAtIndex(sorted, nowIndex, d => d.predicted_power);
+        const upper = splitAtIndex(sorted, nowIndex, d => d.upper_bound);
+        const lower = splitAtIndex(sorted, nowIndex, d => d.lower_bound);
+
+        // Anomaly point highlighting
+        const getPointRadius = (item, idx, threshold) =>
+            (threshold ? idx < nowIndex : idx >= nowIndex) && anomalySet.has(item.timestamp) ? 8 : 0;
+
+        const getPointColor = (item) =>
+            anomalySet.has(item.timestamp) ? 'rgba(239, 68, 68, 1)' : CHART_COLORS.purple.border;
 
         return {
             labels,
+            nowIndex,
             datasets: [
-                // Upper bound (confidence interval top)
-                {
-                    label: 'Upper Bound',
-                    data: sortedData.map(item => item.upper_bound),
-                    borderColor: 'transparent',
-                    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-                    fill: '+1',
-                    tension: 0.3,
-                    pointRadius: 0,
-                    order: 3
-                },
-                // Predicted power (main line)
-                {
-                    label: 'Predicted Power (W)',
-                    data: sortedData.map(item => item.predicted_power),
-                    borderColor: 'rgba(147, 51, 234, 1)',
-                    backgroundColor: 'rgba(147, 51, 234, 0.05)',
-                    fill: false,
-                    tension: 0.3,
+                // Hindcast (past) - dashed
+                createDataset('Hindcast (W)', power.past, 'rgba(147, 51, 234, 0.6)', {
+                    dashed: true, tension: 0.1,
+                    pointRadius: sorted.map((item, i) => getPointRadius(item, i, true)),
+                    pointBackgroundColor: sorted.map(getPointColor),
+                    pointBorderColor: 'white', pointBorderWidth: 2
+                }),
+                // Forecast (future) - solid
+                createDataset('Forecast (W)', power.future, CHART_COLORS.purple.border, {
                     borderWidth: 3,
-                    pointRadius: sortedData.map((item) =>
-                        anomalyTimestamps.has(item.timestamp) ? 8 : 0
-                    ),
-                    pointBackgroundColor: sortedData.map((item) =>
-                        anomalyTimestamps.has(item.timestamp) ? 'rgba(239, 68, 68, 1)' : 'rgba(147, 51, 234, 1)'
-                    ),
-                    pointBorderColor: 'rgba(255, 255, 255, 1)',
-                    pointBorderWidth: 2,
-                    pointHoverRadius: 8,
-                    pointHoverBackgroundColor: 'rgba(147, 51, 234, 1)',
-                    pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
-                    pointHoverBorderWidth: 3,
-                    order: 1
-                },
-                // Lower bound (confidence interval bottom)
-                {
-                    label: 'Lower Bound',
-                    data: sortedData.map(item => item.lower_bound),
-                    borderColor: 'transparent',
-                    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 0,
-                    order: 2
-                }
+                    pointRadius: sorted.map((item, i) => getPointRadius(item, i, false)),
+                    pointBackgroundColor: sorted.map(getPointColor),
+                    pointBorderColor: 'white', pointBorderWidth: 2
+                }),
+                // Confidence bands
+                { ...createDataset('Upper', upper.future, 'transparent', { fill: '+1', order: 10 }),
+                  backgroundColor: 'rgba(147, 51, 234, 0.1)' },
+                { ...createDataset('Lower', lower.future, 'transparent', { order: 11 }),
+                  backgroundColor: 'rgba(147, 51, 234, 0.1)' }
             ]
         };
-    }, [predictions, hasValidData, anomalies]);
+    }, [predictions, anomalies]);
 
-    const chartOptions = useMemo(() => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        },
+    const nowIndex = chartData?.nowIndex ?? 0;
+
+    const chartOptions = useMemo(() => getBaseChartOptions({
+        tooltipBorderColor: CHART_COLORS.purple.border,
+        maxXTicks: 24, // Show more hour labels
         plugins: {
-            legend: {
-                display: false
-            },
             tooltip: {
-                backgroundColor: 'rgba(30, 41, 59, 0.98)',
-                titleColor: '#f8fafc',
-                bodyColor: '#f8fafc',
-                borderColor: 'rgba(147, 51, 234, 0.3)',
-                borderWidth: 1,
-                cornerRadius: 12,
-                padding: 16,
-                displayColors: true,
-                titleFont: {
-                    family: 'Inter, system-ui, sans-serif',
-                    size: 14,
-                    weight: '600'
-                },
-                bodyFont: {
-                    family: 'Inter, system-ui, sans-serif',
-                    size: 13,
-                    weight: '400'
-                },
                 callbacks: {
-                    title: (context) => {
-                        const label = context[0]?.label;
-                        return label ? `Time: ${label}` : 'Time: --';
+                    title: (ctx) => ctx[0]?.label ? `Time: ${ctx[0].label}` : '',
+                    label: (ctx) => {
+                        if (ctx.parsed.y === null) return null;
+                        const prefix = ctx.dataset.label.includes('Hindcast') ? 'Hindcast' :
+                                      ctx.dataset.label.includes('Forecast') ? 'Forecast' : ctx.dataset.label;
+                        return `${prefix}: ${ctx.parsed.y.toLocaleString()} W`;
                     },
-                    label: (context) => {
-                        const value = context.parsed.y;
-                        if (context.dataset.label === 'Predicted Power (W)') {
-                            return `Predicted: ${value.toLocaleString()} W`;
-                        }
-                        if (context.dataset.label === 'Upper Bound') {
-                            return `Upper: ${value.toLocaleString()} W`;
-                        }
-                        if (context.dataset.label === 'Lower Bound') {
-                            return `Lower: ${value.toLocaleString()} W`;
-                        }
-                        return `${context.dataset.label}: ${value.toLocaleString()}`;
-                    },
-                    filter: (tooltipItem) => {
-                        // Show all datasets in tooltip
-                        return true;
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(203, 213, 225, 0.2)',
-                    drawBorder: false
-                },
-                ticks: {
-                    color: '#64748b',
-                    font: {
-                        family: 'Inter, system-ui, sans-serif',
-                        size: 11,
-                        weight: '500'
-                    },
-                    callback: function(value) {
-                        return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value.toLocaleString();
-                    }
+                    filter: (item) => item.raw !== null
                 }
             },
-            x: {
-                grid: {
-                    color: 'rgba(203, 213, 225, 0.2)',
-                    drawBorder: false
-                },
-                ticks: {
-                    color: '#64748b',
-                    font: {
-                        family: 'Inter, system-ui, sans-serif',
-                        size: 11,
-                        weight: '500'
-                    },
-                    maxTicksLimit: 12
+            annotation: nowIndex > 0 ? {
+                annotations: {
+                    nowLine: {
+                        type: 'line',
+                        xMin: nowIndex,
+                        xMax: nowIndex,
+                        borderColor: 'rgba(100, 116, 139, 0.7)',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        label: {
+                            display: true,
+                            content: 'Now',
+                            position: 'start',
+                            backgroundColor: 'rgba(100, 116, 139, 0.85)',
+                            color: 'white',
+                            font: { size: 10, weight: '500' },
+                            padding: { x: 5, y: 2 },
+                            borderRadius: 3
+                        }
+                    }
                 }
-            }
+            } : {}
         }
-    }), []);
+    }), [nowIndex]);
 
+    // Loading state
     if (loading) {
         return (
             <div className="animate-pulse">
@@ -196,7 +140,8 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
         );
     }
 
-    if (!hasValidData) {
+    // Empty state
+    if (!chartData) {
         return (
             <div className="h-80 flex flex-col items-center justify-center">
                 <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-4">
@@ -205,8 +150,8 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
                     </svg>
                 </div>
                 <h4 className="text-lg font-medium text-gray-900 mb-2">No Forecast Available</h4>
-                <p className="text-sm text-gray-500 text-center max-w-md mx-auto">
-                    Forecast predictions will appear here once model is trained and ready.
+                <p className="text-sm text-gray-500 text-center max-w-md">
+                    Forecast predictions will appear here once the model is trained and ready.
                 </p>
             </div>
         );
@@ -214,14 +159,11 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
 
     return (
         <div>
-            {/* Model Info Badge */}
+            {/* Model Info */}
             {modelInfo && (
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00.723-1.745 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
                             {modelInfo.name}
                         </span>
                         <span className="text-xs text-gray-500">
@@ -229,7 +171,7 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
                         </span>
                     </div>
                     <span className="text-xs text-gray-400">
-                        Trained: {formatChartDate(modelInfo.last_trained)}
+                        Trained: {formatUTCToLocalDate(modelInfo.last_trained)}
                     </span>
                 </div>
             )}
@@ -240,14 +182,18 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center space-x-6 mt-4 text-sm">
+            <div className="flex items-center justify-center flex-wrap gap-4 mt-4 text-sm">
                 <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
-                    <span className="text-gray-600">Predicted</span>
+                    <div className="w-6 h-0.5 bg-purple-500 mr-2"></div>
+                    <span className="text-gray-600">Forecast</span>
                 </div>
                 <div className="flex items-center">
-                    <div className="w-8 h-3 rounded bg-purple-100 mr-2"></div>
-                    <span className="text-gray-600">Confidence Interval</span>
+                    <div className="w-6 h-0.5 border-t-2 border-dashed border-purple-400 mr-2"></div>
+                    <span className="text-gray-600">Hindcast</span>
+                </div>
+                <div className="flex items-center">
+                    <div className="w-6 h-3 rounded bg-purple-100 mr-2"></div>
+                    <span className="text-gray-600">Confidence</span>
                 </div>
                 {anomalies.length > 0 && (
                     <div className="flex items-center">

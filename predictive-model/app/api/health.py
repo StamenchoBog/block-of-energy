@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime
+from typing import Any, Dict
+
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -11,6 +13,32 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _check_model_health(model: Any, service_name: str, health_status: Dict) -> None:
+    """Check health of a ML model and update health_status dict."""
+    try:
+        if model.is_trained:
+            health_status["services"][service_name] = {
+                "status": "healthy",
+                "details": f"Trained with {model.data_points_used} points",
+                "last_trained": (
+                    model.last_trained.isoformat() if model.last_trained else None
+                ),
+            }
+        else:
+            health_status["services"][service_name] = {
+                "status": "initializing",
+                "details": "Model not yet trained",
+            }
+            if health_status["status"] == "healthy":
+                health_status["status"] = "initializing"
+    except Exception as e:
+        health_status["services"][service_name] = {
+            "status": "unhealthy",
+            "details": f"Error: {str(e)}",
+        }
+        health_status["status"] = "degraded"
 
 
 @router.get("/health/detailed")
@@ -27,12 +55,13 @@ async def detailed_health():
         },
     }
 
+    # Check database connection
     try:
         if data_service._client:
             await data_service._client.admin.command("ping")
             health_status["services"]["database"] = {
                 "status": "healthy",
-                "details": f"Connected to {settings.MONGODB_DATABASE}",
+                "details": f"Connected to {settings.DATABASE_NAME}",
             }
         else:
             health_status["services"]["database"] = {
@@ -47,52 +76,11 @@ async def detailed_health():
         }
         health_status["status"] = "degraded"
 
-    try:
-        if forecaster.is_trained:
-            health_status["services"]["forecaster"] = {
-                "status": "healthy",
-                "details": f"Trained with {forecaster.data_points_used} points",
-                "last_trained": forecaster.last_trained.isoformat()
-                if forecaster.last_trained
-                else None,
-            }
-        else:
-            health_status["services"]["forecaster"] = {
-                "status": "initializing",
-                "details": "Model not yet trained",
-            }
-            if health_status["status"] == "healthy":
-                health_status["status"] = "initializing"
-    except Exception as e:
-        health_status["services"]["forecaster"] = {
-            "status": "unhealthy",
-            "details": f"Error: {str(e)}",
-        }
-        health_status["status"] = "degraded"
+    # Check ML models health
+    _check_model_health(forecaster, "forecaster", health_status)
+    _check_model_health(anomaly_detector, "anomaly_detector", health_status)
 
-    try:
-        if anomaly_detector.is_trained:
-            health_status["services"]["anomaly_detector"] = {
-                "status": "healthy",
-                "details": f"Trained with {anomaly_detector.data_points_used} points",
-                "last_trained": anomaly_detector.last_trained.isoformat()
-                if anomaly_detector.last_trained
-                else None,
-            }
-        else:
-            health_status["services"]["anomaly_detector"] = {
-                "status": "initializing",
-                "details": "Model not yet trained",
-            }
-            if health_status["status"] == "healthy":
-                health_status["status"] = "initializing"
-    except Exception as e:
-        health_status["services"]["anomaly_detector"] = {
-            "status": "unhealthy",
-            "details": f"Error: {str(e)}",
-        }
-        health_status["status"] = "degraded"
-
+    # Return appropriate response based on status
     if health_status["status"] == "healthy":
         return health_status
     elif health_status["status"] == "initializing":

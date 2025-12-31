@@ -1,56 +1,82 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, memo, useCallback, useMemo } from 'react';
+import { format, getISOWeek, subWeeks } from 'date-fns';
+
+/** Parse ISO week string (e.g., "2025-W01") into { week, year } */
+const parseISOWeek = (isoWeekString) => {
+    if (!isoWeekString || !isoWeekString.includes('-W')) {
+        return { week: null, year: null };
+    }
+    const [yearStr, weekPart] = isoWeekString.split('-W');
+    return {
+        week: parseInt(weekPart, 10),
+        year: parseInt(yearStr, 10)
+    };
+};
+
+/** Get current defaults for each period type */
+const getCurrentDefaults = () => {
+    const now = new Date();
+    // Default to LAST week (not current) for weekly reports
+    const lastWeek = subWeeks(now, 1);
+    const isoWeek = getISOWeek(lastWeek);
+    return {
+        date: format(now, 'yyyy-MM-dd'),
+        week: `${lastWeek.getFullYear()}-W${String(isoWeek).padStart(2, '0')}`,
+        month: String(now.getMonth() + 1),
+        year: String(now.getFullYear())
+    };
+};
+
+/** Get max week value (last completed week) */
+const getMaxWeek = () => {
+    const lastWeek = subWeeks(new Date(), 1);
+    const isoWeek = getISOWeek(lastWeek);
+    return `${lastWeek.getFullYear()}-W${String(isoWeek).padStart(2, '0')}`;
+};
 
 const ReportControls = memo(function ReportControls({
-    initialReportType,
-    initialDate,
-    initialWeek,
-    initialMonth,
-    initialYear,
     onGenerateReport,
     isLoading
 }) {
-    const [reportType, setReportType] = useState(initialReportType);
-    const [date, setDate] = useState(initialDate);
-    const [week, setWeek] = useState(initialWeek);
-    const [month, setMonth] = useState(initialMonth);
-    const [year, setYear] = useState(initialYear);
+    const defaults = getCurrentDefaults();
+    const [reportType, setReportType] = useState('daily');
+    const [date, setDate] = useState(defaults.date);
+    const [week, setWeek] = useState(defaults.week);
+    const [month, setMonth] = useState(defaults.month);
+    const [year, setYear] = useState(defaults.year);
 
-    const generateReport = useCallback(() => {
+    // Max week for the picker (only allow past weeks)
+    const maxWeek = useMemo(() => getMaxWeek(), []);
+
+    // Build params object based on current report type
+    const buildParams = useCallback(() => {
         const params = { type: reportType };
-
-        if (reportType === 'daily') params.date = date;
+        if (reportType === 'daily') {
+            params.date = date;
+        }
         if (reportType === 'weekly') {
-            params.week = week;
-            params.year = year;
+            // Parse ISO week format "2025-W01" into separate week and year
+            const parsed = parseISOWeek(week);
+            params.week = String(parsed.week);
+            params.year = String(parsed.year);
         }
         if (reportType === 'monthly') {
             params.month = month;
             params.year = year;
         }
-        if (reportType === 'yearly') params.year = year;
-
-        onGenerateReport(params);
-    }, [reportType, date, week, month, year, onGenerateReport]);
-
-    const handleDownloadCSV = useCallback(() => {
-        const params = new URLSearchParams();
-        params.set('type', reportType);
-
-        if (reportType === 'daily') params.set('date', date);
-        if (reportType === 'weekly') {
-            params.set('week', week);
-            params.set('year', year);
-        }
-        if (reportType === 'monthly') {
-            params.set('month', month);
-            params.set('year', year);
-        }
-        if (reportType === 'yearly') params.set('year', year);
-
-        window.location.href = `/api/report/download?${params.toString()}`;
+        return params;
     }, [reportType, date, week, month, year]);
 
-    const reportTypes = ['daily', 'weekly', 'monthly', 'yearly'];
+    const generateReport = useCallback(() => {
+        onGenerateReport(buildParams());
+    }, [buildParams, onGenerateReport]);
+
+    const handleDownloadCSV = useCallback(() => {
+        const params = new URLSearchParams(buildParams());
+        window.location.href = `/api/report/download?${params.toString()}`;
+    }, [buildParams]);
+
+    const reportTypes = ['daily', 'weekly', 'monthly'];
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -80,6 +106,7 @@ const ReportControls = memo(function ReportControls({
                         <input
                             type="date"
                             value={date}
+                            max={defaults.date}
                             onChange={(e) => setDate(e.target.value)}
                             className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
@@ -89,6 +116,7 @@ const ReportControls = memo(function ReportControls({
                         <input
                             type="week"
                             value={week}
+                            max={maxWeek}
                             onChange={(e) => setWeek(e.target.value)}
                             className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
@@ -119,17 +147,6 @@ const ReportControls = memo(function ReportControls({
                         </>
                     )}
 
-                    {reportType === 'yearly' && (
-                        <input
-                            type="number"
-                            placeholder="Year"
-                            min="2020"
-                            max={new Date().getFullYear() + 5}
-                            value={year}
-                            onChange={(e) => setYear(e.target.value)}
-                            className="w-24 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                    )}
                 </div>
 
                 {/* Actions */}

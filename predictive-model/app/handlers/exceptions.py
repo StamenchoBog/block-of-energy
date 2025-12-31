@@ -1,5 +1,7 @@
 import logging
-from fastapi import Request
+from typing import Callable, Optional
+
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.exceptions import (
@@ -13,52 +15,35 @@ from app.exceptions import (
 
 logger = logging.getLogger(__name__)
 
+EXCEPTION_CONFIG = {
+    ModelNotTrainedError: (503, "warning", None),
+    InsufficientDataError: (400, "warning", None),
+    DatabaseConnectionError: (503, "error", "Service temporarily unavailable - database error"),
+    PredictionError: (503, "error", "Prediction service temporarily unavailable"),
+    ResourceLimitError: (429, "warning", None),
+}
 
-def setup_exception_handlers(app):
+
+def _create_exception_handler(
+    status_code: int, log_level: str, custom_detail: Optional[str]
+) -> Callable:
+    """Factory function to create standardized exception handlers."""
+
+    async def handler(request: Request, exc):
+        log_func = getattr(logger, log_level)
+        log_func(f"{exc.__class__.__name__}: {exc.message}")
+
+        detail = custom_detail if custom_detail else exc.message
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": detail, "error_code": exc.error_code},
+        )
+
+    return handler
+
+
+def setup_exception_handlers(app: FastAPI) -> None:
     """Setup all exception handlers for the FastAPI app."""
-
-    @app.exception_handler(ModelNotTrainedError)
-    async def model_not_trained_handler(request: Request, exc: ModelNotTrainedError):
-        logger.warning(f"Model not trained: {exc.message}")
-        return JSONResponse(
-            status_code=503,
-            content={"detail": exc.message, "error_code": exc.error_code},
-        )
-
-    @app.exception_handler(InsufficientDataError)
-    async def insufficient_data_handler(request: Request, exc: InsufficientDataError):
-        logger.warning(f"Insufficient data: {exc.message}")
-        return JSONResponse(
-            status_code=400,
-            content={"detail": exc.message, "error_code": exc.error_code},
-        )
-
-    @app.exception_handler(DatabaseConnectionError)
-    async def database_error_handler(request: Request, exc: DatabaseConnectionError):
-        logger.error(f"Database error: {exc.message}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                "detail": "Service temporarily unavailable - database error",
-                "error_code": exc.error_code,
-            },
-        )
-
-    @app.exception_handler(PredictionError)
-    async def prediction_error_handler(request: Request, exc: PredictionError):
-        logger.error(f"Prediction error: {exc.message}")
-        return JSONResponse(
-            status_code=503,
-            content={
-                "detail": "Prediction service temporarily unavailable",
-                "error_code": exc.error_code,
-            },
-        )
-
-    @app.exception_handler(ResourceLimitError)
-    async def resource_limit_handler(request: Request, exc: ResourceLimitError):
-        logger.warning(f"Resource limit exceeded: {exc.message}")
-        return JSONResponse(
-            status_code=429,
-            content={"detail": exc.message, "error_code": exc.error_code},
-        )
+    for exc_class, (status_code, log_level, custom_detail) in EXCEPTION_CONFIG.items():
+        handler = _create_exception_handler(status_code, log_level, custom_detail)
+        app.add_exception_handler(exc_class, handler)

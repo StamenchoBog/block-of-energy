@@ -1,25 +1,12 @@
 import { Request, Response } from 'express';
+import { format, getYear } from 'date-fns';
 import reportService from '../services/reportService';
-import cacheService from '../services/cacheService';
 import logger from '../config/logger';
-import { ReportResponse } from '../models/energy';
 
 export const getReport = async (req: Request, res: Response): Promise<void> => {
     try {
         const { type = 'daily', date, week, month, year } = req.query;
 
-        // Create cache key from query parameters
-        const cacheKey = `report:${type}:${date || ''}:${week || ''}:${month || ''}:${year || ''}`;
-
-        // Check cache first
-        const cachedData = cacheService.get<ReportResponse>(cacheKey);
-        if (cachedData) {
-            logger.info(`Serving cached ${type} report`);
-            res.json(cachedData);
-            return;
-        }
-
-        // Generate report
         const reportParams = {
             type: String(type),
             date: date as string,
@@ -28,10 +15,6 @@ export const getReport = async (req: Request, res: Response): Promise<void> => {
             year: year ? String(year) : undefined
         };
         const report = await reportService.generateReport(reportParams);
-
-        // Cache the result (adjust TTL based on report type)
-        const ttl = reportParams.type === 'daily' ? 15 * 60 * 1000 : 60 * 60 * 1000;
-        cacheService.set(cacheKey, report, ttl);
 
         res.json(report);
     } catch (error) {
@@ -105,12 +88,14 @@ export const downloadReportCSV = async (req: Request, res: Response): Promise<vo
 
         // Generate appropriate filename
         const getFilename = () => {
-            const timestamp = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const timestamp = format(now, 'yyyy-MM-dd');
+            const currentYear = getYear(now);
             switch(String(type)) {
                 case 'daily': return `daily_report_${date || timestamp}.csv`;
                 case 'weekly': return `weekly_report_${week || 'current'}.csv`;
-                case 'monthly': return `monthly_report_${month || 'current'}_${year || new Date().getFullYear()}.csv`;
-                case 'yearly': return `yearly_report_${year || new Date().getFullYear()}.csv`;
+                case 'monthly': return `monthly_report_${month || 'current'}_${year || currentYear}.csv`;
+                case 'yearly': return `yearly_report_${year || currentYear}.csv`;
                 default: return `energy_report_${timestamp}.csv`;
             }
         };
@@ -131,14 +116,3 @@ export const downloadReportCSV = async (req: Request, res: Response): Promise<vo
     }
 };
 
-export const invalidateCache = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { pattern = 'report:*' } = req.body;
-        cacheService.invalidate(pattern);
-        logger.info(`Cache invalidated with pattern: ${pattern}`);
-        res.json({ success: true, message: 'Cache invalidated' });
-    } catch (error) {
-        logger.error('Error invalidating cache:', error);
-        res.status(500).json({ error: 'Failed to invalidate cache' });
-    }
-};
