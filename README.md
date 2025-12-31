@@ -12,7 +12,9 @@ a given home, office, university campus or industry center.
   - [Project Structure](#project-structure)
   - [Application Architecture](#application-architecture)
   - [Technologies Used](#technologies-used)
-  - [Temper Auditing Strategy](#temper-auditing-strategy)
+  - [Predictive Analytics](#predictive-analytics)
+  - [Cost Estimation](#cost-estimation)
+  - [Tamper Auditing Strategy](#tamper-auditing-strategy)
   - [Hash Verification Proof](#hash-verification-proof)
   - [CI/CD](#cicd)
   - [Local Development](#local-development)
@@ -57,10 +59,13 @@ The data flow can be broken down into the following steps:
 
 ## Key Features
 
-- **Secure and Temper-Free Data Logging:** Utilizes Hyperledger Fabric to ensure that all energy consumption records are immutable and verifiable.
+- **Secure and Tamper-Free Data Logging:** Utilizes Hyperledger Fabric to ensure that all energy consumption records are immutable and verifiable.
 - **Real-time Data Processing:** Azure Functions process IoT data as it arrives, providing near real-time insights.
 - **Automated Data Auditing:** A two-layered auditing system automatically verifies the integrity of the data, with both continuous and periodic checks.
-- **Data Visualization Dashboard:** A user-friendly web interface for viewing and analyzing energy consumption data.
+- **Predictive Analytics:** Machine learning-powered forecasting using Prophet and anomaly detection using Isolation Forest to identify unusual consumption patterns.
+- **Cost Estimation:** Real-time cost calculations based on Macedonia EVN progressive block tariffs with low/high tariff time-of-use pricing.
+- **Per-Device Breakdown:** Detailed consumption analysis per device with percentage shares and peak power tracking.
+- **Data Visualization Dashboard:** A single-page tabbed interface for viewing consumption data, forecasts, anomalies, and detailed reports.
 - **Scalable and Modular Architecture:** The use of microservices, containers, and a forwarder proxy allows for independent scaling and easy integration of new components.
 
 ## Project Structure
@@ -68,19 +73,25 @@ The data flow can be broken down into the following steps:
 The repository is organized into the following directories:
 
 - `app/`: Contains the source code for the frontend and backend API of the web application.
+  - `api/`: Express.js backend with REST API, cost estimation, and prediction proxy services.
+  - `frontend/`: Astro.js single-page application with tabbed interface for reports and charts.
+- `predictive-model/`: FastAPI microservice for machine learning predictions.
+  - Prophet-based energy consumption forecasting with confidence intervals.
+  - Isolation Forest anomaly detection with severity classification.
+  - Automated hyperparameter tuning with time-series cross-validation.
 - `infra/`: Includes all Terraform scripts for provisioning Azure infrastructure, as well as the source code for the Azure Functions.
 - `hyperledger-fabric/`: Holds the configuration files and chaincode for the Hyperledger Fabric blockchain network.
 - `forward-proxy/`: Contains the implementation of the MQTT forwarder proxy.
 - `tools/`: Development and testing utilities:
-  - `energy-data-simulator/`: MQTT simulator for generating test energy data
-  - `local-mqtt-processor/`: Bridge between MQTT and MongoDB for local development
-  - `verify-hash/`: Tool for verifying data hashes against the blockchain
+  - `energy-data-simulator/`: Multi-device MQTT simulator (dishwasher, boiler, AC, washing machine, 3-phase meter).
+  - `local-mqtt-processor/`: Bridge between MQTT and MongoDB for local development.
+  - `verify-hash/`: Tool for verifying data hashes against the blockchain.
 - `docs/`: Stores project documentation, including architecture diagrams and application screenshots.
 - `.github/`: Contains CI/CD workflow definitions for GitHub Actions.
 
 ## Application Architecture
 
-The web application is composed of a frontend and a backend API, both running in the Kubernetes cluster.
+The web application is composed of a frontend, backend API, and predictive model service, all running in the Kubernetes cluster.
 
 ```mermaid
 graph LR
@@ -88,9 +99,10 @@ graph LR
         Frontend[Astro.js Frontend]
     end
 
-    subgraph "Azure"
-        subgraph "API (AKS)"
+    subgraph "Azure (AKS)"
+        subgraph "Application Services"
             API[Express.js API]
+            Prediction[Prediction Service<br/>FastAPI + Prophet]
         end
         subgraph "Database"
             DB[(Cosmos DB)]
@@ -100,20 +112,85 @@ graph LR
     User --> Frontend
     Frontend --> API
     API --> DB
+    API --> Prediction
+    Prediction --> DB
 ```
 
 ## Technologies Used
 
 - **Cloud Provider:** Microsoft Azure
-- **Backend:** Node.js, Express.js, Python, Go
-- **Frontend:** Astro, Tailwind CSS
+- **Backend:** Node.js, Express.js, Python (FastAPI), Go
+- **Frontend:** Astro, React, Tailwind CSS
 - **Database:** Azure Cosmos DB (MongoDB API)
+- **Machine Learning:** Prophet (forecasting), scikit-learn (Isolation Forest anomaly detection)
 - **Blockchain:** Hyperledger Fabric
 - **Infrastructure as Code:** Terraform (OpenTofu)
 - **Messaging:** MQTT (Eclipse Mosquitto), Azure Service Bus
-- **Containerization:** Docker
+- **Containerization:** Docker, Kubernetes (AKS)
 
-## Temper Auditing Strategy
+## Predictive Analytics
+
+The platform includes a dedicated microservice for machine learning-powered analytics, providing energy consumption forecasting and anomaly detection.
+
+### Energy Forecasting
+
+Uses Facebook Prophet to predict future energy consumption with confidence intervals:
+
+- **Forecast Horizons:** 12, 24, or 48 hours ahead
+- **Seasonality:** Captures daily and weekly consumption patterns
+- **Confidence Bands:** Upper and lower bounds for prediction uncertainty
+- **Data Requirements:** Minimum 7 days of historical data for accurate predictions
+
+### Anomaly Detection
+
+Uses Isolation Forest algorithm to identify unusual consumption patterns:
+
+| Anomaly Type | Description |
+| :--- | :--- |
+| **Spike** | Unusually high power consumption |
+| **Dip** | Unexpectedly low consumption |
+| **Pattern Change** | Deviation from normal usage patterns |
+
+Features include:
+- **Sensitivity Control:** Adjustable detection threshold (0.1 - 1.0)
+- **Severity Levels:** Low, medium, and high classifications
+- **Feature Engineering:** 8 engineered features including cyclical time encoding and 24-hour rolling statistics
+
+### Automated Tuning
+
+The prediction models are automatically optimized through:
+- Weekly hyperparameter tuning using grid search
+- Time-series cross-validation for model selection
+- Cached optimal parameters for consistent predictions
+
+## Cost Estimation
+
+Real-time cost calculations based on Macedonia EVN electricity tariffs.
+
+### Progressive Block Tariff
+
+| Block | Consumption Range | Rate (MKD/kWh) |
+| :--- | :--- | :--- |
+| Block 1 | 0 - 210 kWh | 4.44 |
+| Block 2 | 211 - 630 kWh | 5.57 |
+| Block 3 | 631 - 1050 kWh | 7.43 |
+| Block 4 | 1051+ kWh | 18.30 |
+
+### Time-of-Use Pricing
+
+- **Low Tariff (1.98 MKD/kWh):**
+  - Weekdays: 13:00-15:00 and 22:00-07:00
+  - Weekends: Saturday 22:00 to Monday 07:00
+- **High Tariff:** Standard block rates during other hours
+
+### Features
+
+- Per-reading cost calculation with tariff type identification
+- Daily cost projections with confidence levels
+- Monthly cost breakdown by consumption block
+- Configurable rates via environment variables
+
+## Tamper Auditing Strategy
 
 To ensure the integrity of the stored data, a two-layered automated auditing strategy is implemented using two separate Azure Functions:
 
@@ -154,20 +231,23 @@ docker compose logs -f
 ```
 
 That's it! All services will start automatically:
+
 - MongoDB and Mosquitto MQTT broker (infrastructure)
 - MQTT Processor (bridges sensor data to MongoDB)
 - API Server (Express.js backend)
+- Prediction Service (FastAPI + Prophet)
 - Frontend (Astro.js)
-- Energy Simulator (generates test data)
+- Energy Simulator (generates multi-device test data)
 
 ### Access the Application
 
 | Service | URL |
-|---------|-----|
-| Frontend | http://localhost:4321 |
-| API | http://localhost:3000 |
-| MongoDB | mongodb://localhost:27017 |
-| MQTT Broker | mqtt://localhost:1883 |
+| :--- | :--- |
+| Frontend | <http://localhost:4321> |
+| API | <http://localhost:3000> |
+| Prediction Service | <http://localhost:8000> |
+| MongoDB | `mongodb://localhost:27017` |
+| MQTT Broker | `mqtt://localhost:1883` |
 
 ### Stop Services
 
@@ -191,11 +271,32 @@ See [hyperledger-fabric/README.md](./hyperledger-fabric/README.md) for detailed 
 
 ## Application Screenshots
 
-![Dashboard](docs/images/application/01_dashboard.png)
-![Daily Report](docs/images/application/02_daily_report.png)
-![Weekly Report](docs/images/application/03_weekly_report.png)
-![Monthly Report](docs/images/application/04_monthly_report.png)
-![Yearly Report](docs/images/application/05_yearly_report.png)
+### Daily Report
+
+![Daily Report - Summary](docs/images/application/daily_report_1.png)
+![Daily Report - Device Breakdown](docs/images/application/daily_report_2.png)
+![Daily Report - Details](docs/images/application/daily_report_3.png)
+
+### Weekly Report
+
+![Weekly Report](docs/images/application/weekly_report.png)
+
+### Monthly Report
+
+![Monthly Report - Summary](docs/images/application/monthly_report_1.png)
+![Monthly Report - Details](docs/images/application/monthly_report_2.png)
+
+### Consumption Chart
+
+![Consumption Chart](docs/images/application/consumption_chart.png)
+
+### Forecast Chart
+
+TODO: Add image
+
+### Anomalies view
+
+TODO: Add image
 
 ## Future Improvements
 
