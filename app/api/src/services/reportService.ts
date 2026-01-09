@@ -1,5 +1,13 @@
 import { Collection } from 'mongodb';
-import { startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear } from 'date-fns';
+import {
+    startOfISOWeek,
+    endOfISOWeek,
+    setISOWeek,
+    setISOWeekYear,
+    getISOWeeksInYear,
+    format,
+    subDays
+} from 'date-fns';
 import logger from '../config/logger';
 import {
     DailyDataPoint,
@@ -11,27 +19,101 @@ import {
 } from '../models/energy';
 import { getDatabase } from "../config/database";
 import { getCostService } from './costService';
+import cacheService from './cacheService';
+
+const REPORT_CACHE_TTL = {
+    daily: 5 * 60 * 1000,     // 5 minutes - data changes throughout day
+    weekly: 15 * 60 * 1000,   // 15 minutes - less frequent updates
+    monthly: 30 * 60 * 1000,  // 30 minutes - historical data
+    yearly: 60 * 60 * 1000    // 1 hour - mostly static
+} as const;
 
 export class ReportService {
+    // Memoization cache for expensive ISO week boundary calculations
+    private weekBoundaryCache = new Map<string, { start: Date; end: Date }>();
+
+    /**
+     * Builds a cache key for the given report type and parameters
+     */
+    private buildCacheKey(reportType: string, params: ReportParams): string {
+        const { date, week, month, year } = params;
+        const currentYear = year || new Date().getFullYear();
+
+        switch (reportType) {
+            case 'daily':
+                return `reports:daily:${date || new Date().toISOString().split('T')[0]}`;
+            case 'weekly':
+                return `reports:weekly:${currentYear}:${week}`;
+            case 'monthly':
+                return `reports:monthly:${currentYear}:${month}`;
+            case 'yearly':
+                return `reports:yearly:${currentYear}`;
+            default:
+                return `reports:${reportType}:${JSON.stringify(params)}`;
+        }
+    }
+
+    /**
+     * Get ISO week boundaries with memoization to avoid repeated expensive calculations
+     */
+    private getWeekBoundaries(weekNum: number, year: number): { start: Date; end: Date } {
+        const cacheKey = `${year}-W${weekNum}`;
+
+        const cached = this.weekBoundaryCache.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+
+        const dateInWeek = setISOWeek(setISOWeekYear(new Date(), year), weekNum);
+        const weekStartLocal = startOfISOWeek(dateInWeek);
+        const weekEndLocal = endOfISOWeek(dateInWeek);
+        const weekStartStr = format(weekStartLocal, 'yyyy-MM-dd');
+        const weekEndStr = format(weekEndLocal, 'yyyy-MM-dd');
+
+        const boundaries = {
+            start: new Date(`${weekStartStr}T00:00:00.000Z`),
+            end: new Date(`${weekEndStr}T23:59:59.999Z`)
+        };
+
+        this.weekBoundaryCache.set(cacheKey, boundaries);
+        return boundaries;
+    }
+
     async generateReport(params: ReportParams): Promise<ReportResponse> {
         const { type = 'daily', date, week, month, year } = params;
         const reportType = String(type).toLowerCase();
         const currentYear = year || new Date().getFullYear();
 
+        // Check cache first
+        const cacheKey = this.buildCacheKey(reportType, params);
+        const cached = cacheService.getData<ReportResponse>(cacheKey);
+        if (cached) {
+            logger.debug(`Cache hit for ${cacheKey}`);
+            return cached;
+        }
+
         const db = await getDatabase();
         const collection = db.collection('sensor-measurements');
 
-        logger.info(`Generating ${reportType} report`, { params });
+        logger.info(`Generating ${reportType} report (cache miss)`, { params });
 
         try {
-            const reportData = await this.fetchReportData(collection, reportType, params);
+            // Calculate date range ONCE and reuse for all operations
+            const { startDate, endDate } = this.getDateRange(reportType, params);
+
+            const reportData = await this.fetchReportDataWithRange(
+                collection, reportType, params, startDate, endDate
+            );
             const summary = this.calculateSummary(reportData);
 
             // Get previous period comparison
             const previousParams = this.getPreviousPeriodParams(reportType, params);
             if (previousParams) {
                 try {
-                    const previousData = await this.fetchReportData(collection, reportType, previousParams);
+                    const { startDate: prevStart, endDate: prevEnd } = this.getDateRange(reportType, previousParams);
+                    const previousData = await this.fetchReportDataWithRange(
+                        collection, reportType, previousParams, prevStart, prevEnd
+                    );
                     if (previousData.length > 0) {
                         const previousSummary = this.calculateSummary(previousData);
                         summary.comparison = this.calculateComparison(summary, previousSummary, reportType);
@@ -41,11 +123,10 @@ export class ReportService {
                 }
             }
 
-            // Get device breakdown
-            const { startDate, endDate } = this.getDateRange(reportType, params);
+            // Reuse already-calculated date range for device breakdown
             const deviceBreakdown = await this.getDeviceBreakdown(collection, startDate, endDate);
 
-            return {
+            const response: ReportResponse = {
                 reportType,
                 date: date || new Date().toISOString().split('T')[0],
                 week,
@@ -55,23 +136,36 @@ export class ReportService {
                 summary,
                 deviceBreakdown: deviceBreakdown.length > 0 ? deviceBreakdown : undefined
             };
+
+            // Cache the result with appropriate TTL
+            const ttl = REPORT_CACHE_TTL[reportType as keyof typeof REPORT_CACHE_TTL]
+                || REPORT_CACHE_TTL.daily;
+            cacheService.set(cacheKey, response, ttl);
+
+            return response;
         } catch (error) {
             logger.error(`Error generating ${reportType} report:`, error);
             throw error;
         }
     }
 
-    private async fetchReportData(collection: Collection, reportType: string, params: ReportParams): Promise<any[]> {
-        const { date, week, month, year } = params;
+    private async fetchReportDataWithRange(
+        collection: Collection,
+        reportType: string,
+        params: ReportParams,
+        startDate: Date,
+        endDate: Date
+    ): Promise<any[]> {
+        const { date, year } = params;
         const currentYear = year || new Date().getFullYear();
 
         switch (reportType) {
             case 'daily':
                 return this.generateDailyReport(collection, date);
             case 'weekly':
-                return this.generateWeeklyReport(collection, Number(week), Number(currentYear));
+                return this.generateWeeklyReport(collection, startDate, endDate);
             case 'monthly':
-                return this.generateMonthlyReport(collection, Number(month), Number(currentYear));
+                return this.generateMonthlyReport(collection, startDate, endDate);
             case 'yearly':
                 return this.generateYearlyReport(collection, Number(currentYear));
             default:
@@ -110,35 +204,58 @@ export class ReportService {
         });
     }
 
-    private async generateWeeklyReport(collection: Collection, weekNum: number, year: number): Promise<any[]> {
-        const dateInWeek = setISOWeek(setISOWeekYear(new Date(), year), weekNum);
-        const weekStart = startOfISOWeek(dateInWeek);
-        const weekEnd = endOfISOWeek(dateInWeek);
-        weekEnd.setHours(23, 59, 59, 999);
-
+    private async generateWeeklyReport(
+        collection: Collection,
+        weekStart: Date,
+        weekEnd: Date
+    ): Promise<any[]> {
         const dailyData = await this.aggregateByDay(collection, weekStart, weekEnd);
         const costService = getCostService();
+        const dataByDate = new Map(dailyData.map(day => [day._id, day]));
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const results: any[] = [];
 
-        // Each day's MAX(ENERGY.Today) IS the daily consumption (meter resets at midnight)
-        // No delta calculation needed between days
-        return dailyData.map(day => {
-            const energy = Math.round((day.maxEnergy || 0) * 100) / 100;
-            const cost = costService.calculateReadingCost(energy, new Date(`${day._id}T12:00:00`));
-            return {
-                day: day.dayOfWeek,
-                dayName: ['', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day.dayOfWeek || 0],
-                date: day._id,
-                peakPower: Math.round((day.peakPower || 0) * 100) / 100,
-                energy,
-                cost: cost.cost
-            };
-        });
+        // Simple arithmetic loop instead of eachDayOfInterval
+        const startMs = weekStart.getTime();
+        const dayMs = 24 * 60 * 60 * 1000;
+
+        for (let i = 0; i < 7; i++) {
+            const dayDate = new Date(startMs + i * dayMs);
+            const dateStr = format(dayDate, 'yyyy-MM-dd');
+            const isoDay = i + 1; // 1=Mon through 7=Sun (ISO standard)
+            const dayData = dataByDate.get(dateStr);
+
+            if (dayData) {
+                const energy = Math.round((dayData.maxEnergy || 0) * 100) / 100;
+                const cost = costService.calculateReadingCost(energy, new Date(`${dateStr}T12:00:00`));
+                results.push({
+                    day: isoDay,
+                    dayName: dayNames[i],
+                    date: dateStr,
+                    peakPower: Math.round((dayData.peakPower || 0) * 100) / 100,
+                    energy,
+                    cost: cost.cost
+                });
+            } else {
+                results.push({
+                    day: isoDay,
+                    dayName: dayNames[i],
+                    date: dateStr,
+                    peakPower: null,
+                    energy: null,
+                    cost: null
+                });
+            }
+        }
+
+        return results;
     }
 
-    private async generateMonthlyReport(collection: Collection, monthNum: number, year: number): Promise<any[]> {
-        const monthStart = new Date(year, monthNum - 1, 1);
-        const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999);
-
+    private async generateMonthlyReport(
+        collection: Collection,
+        monthStart: Date,
+        monthEnd: Date
+    ): Promise<any[]> {
         const dailyData = await this.aggregateByDay(collection, monthStart, monthEnd);
         const costService = getCostService();
 
@@ -156,8 +273,9 @@ export class ReportService {
     }
 
     private async generateYearlyReport(collection: Collection, year: number): Promise<any[]> {
-        const yearStart = new Date(year, 0, 1);
-        const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+        // Use explicit UTC dates
+        const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
+        const yearEnd = new Date(`${year}-12-31T23:59:59.999Z`);
 
         const dailyData = await this.aggregateByDay(collection, yearStart, yearEnd) as DailyDataPoint[];
         const costService = getCostService();
@@ -277,14 +395,18 @@ export class ReportService {
         switch (reportType) {
             case 'daily': {
                 if (!date) return null;
-                const prev = new Date(date);
-                prev.setDate(prev.getDate() - 1);
-                return { type: 'daily', date: prev.toISOString().split('T')[0] };
+                const prevDate = subDays(new Date(date), 1);
+                return { type: 'daily', date: format(prevDate, 'yyyy-MM-dd') };
             }
             case 'weekly': {
                 if (!week || !year) return null;
                 const w = Number(week), y = Number(year);
-                return w > 1 ? { type: 'weekly', week: w - 1, year: y } : { type: 'weekly', week: 52, year: y - 1 };
+                if (w > 1) {
+                    return { type: 'weekly', week: w - 1, year: y };
+                }
+                // Week 1 → last week of previous year (could be 52 or 53)
+                const lastWeekOfPrevYear = getISOWeeksInYear(new Date(y - 1, 6, 1));
+                return { type: 'weekly', week: lastWeekOfPrevYear, year: y - 1 };
             }
             case 'monthly': {
                 if (!month || !year) return null;
@@ -379,22 +501,22 @@ export class ReportService {
                 return this.createDateRange(d);
             }
             case 'weekly': {
-                const dateInWeek = setISOWeek(setISOWeekYear(new Date(), currentYear), Number(week) || 1);
-                const weekEnd = endOfISOWeek(dateInWeek);
-                weekEnd.setHours(23, 59, 59, 999);
-                return { startDate: startOfISOWeek(dateInWeek), endDate: weekEnd };
+                const boundaries = this.getWeekBoundaries(Number(week) || 1, currentYear);
+                return { startDate: boundaries.start, endDate: boundaries.end };
             }
             case 'monthly': {
                 const m = Number(month) || 1;
+                const monthStartLocal = new Date(currentYear, m - 1, 1);
+                const monthEndLocal = new Date(currentYear, m, 0);
                 return {
-                    startDate: new Date(currentYear, m - 1, 1),
-                    endDate: new Date(currentYear, m, 0, 23, 59, 59, 999)
+                    startDate: new Date(`${format(monthStartLocal, 'yyyy-MM-dd')}T00:00:00.000Z`),
+                    endDate: new Date(`${format(monthEndLocal, 'yyyy-MM-dd')}T23:59:59.999Z`)
                 };
             }
             case 'yearly':
                 return {
-                    startDate: new Date(currentYear, 0, 1),
-                    endDate: new Date(currentYear, 11, 31, 23, 59, 59, 999)
+                    startDate: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+                    endDate: new Date(`${currentYear}-12-31T23:59:59.999Z`)
                 };
             default: {
                 const today = new Date().toISOString().split('T')[0];

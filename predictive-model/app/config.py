@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # Model parameters
     RETRAIN_INTERVAL_HOURS: int = 24
     MIN_TRAINING_DATA_POINTS: int = 48
-    MIN_RELIABLE_DATA_DAYS: int = 7  # Minimum days of data before showing predictions
+    MIN_RELIABLE_DATA_DAYS: int = 0
 
     # Hyperparameter tuning settings
     TUNING_INTERVAL_DAYS: int = 7
@@ -29,8 +29,8 @@ class Settings(BaseSettings):
 
     # Resource limits
     MAX_QUERY_LIMIT: int = 50000
-    MAX_FORECAST_HOURS: int = 48  # 2 days max (accuracy degrades beyond this)
-    MAX_ANOMALY_HOURS: int = 48  # 2 days
+    MAX_FORECAST_HOURS: int = 48
+    MAX_ANOMALY_HOURS: int = 48
     REQUEST_TIMEOUT_SECONDS: int = 30
 
     # Input validation bounds

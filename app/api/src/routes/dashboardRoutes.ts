@@ -24,7 +24,7 @@ router.get('/dashboard_overview_data', async (req: ApiRequest, res: ApiResponse)
         const deviceType = req.query.deviceType as string | undefined;
 
         const cacheKey = getCacheKey(deviceId, deviceType);
-        const cached = cacheService.get(cacheKey);
+        const cached = cacheService.getData(cacheKey);
         if (cached) {
             return res.json(cached);
         }
@@ -44,7 +44,7 @@ router.get('/dashboard_overview_data', async (req: ApiRequest, res: ApiResponse)
 
 router.get('/devices', async (_req: ApiRequest, res: ApiResponse) => {
     try {
-        const cached = cacheService.get('devices:list');
+        const cached = cacheService.getData('devices:list');
         if (cached) {
             return res.json(cached);
         }

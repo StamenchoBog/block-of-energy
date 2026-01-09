@@ -46,18 +46,27 @@ class DataService:
         return self._db[settings.DATABASE_COLLECTION]
 
     async def _fetch_and_transform_data(
-        self, start_date: datetime, limit: int = None
+        self, start_date: datetime, limit: int = None, most_recent: bool = True
     ) -> List[Dict[str, Any]]:
-        """Common method to fetch and transform data from MongoDB."""
+        """Common method to fetch and transform data from MongoDB.
+
+        Args:
+            start_date: Fetch data from this date onwards
+            limit: Maximum number of documents to fetch
+            most_recent: If True, fetch most recent data when limit applies.
+                        Data is always returned in chronological order.
+        """
         start_date_iso = start_date.isoformat()
 
+        # Sort descending to get most recent data first when limit applies
+        sort_order = -1 if most_recent else 1
         cursor = self.collection.find(
             {
                 "processingTimestamp": {"$gte": start_date_iso},
                 "payload.ENERGY.Power": {"$exists": True},
             },
             {"processingTimestamp": 1, "payload.ENERGY.Power": 1, "_id": 0},
-        ).sort("processingTimestamp", 1)
+        ).sort("processingTimestamp", sort_order)
 
         limit = limit or settings.MAX_QUERY_LIMIT
         raw_data = await cursor.to_list(length=limit)
@@ -74,6 +83,10 @@ class DataService:
             except (KeyError, ValueError) as e:
                 logger.warning(f"Skipping malformed document: {e}")
                 continue
+
+        # Return in chronological order (Prophet requires ascending timestamps)
+        if most_recent:
+            data.reverse()
 
         return data
 

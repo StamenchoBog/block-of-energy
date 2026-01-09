@@ -202,7 +202,7 @@ function handlePredictionError<T>(
 function createPredictionFetcher<T>(
     endpoint: string,
     operationName: string,
-    timeout: number = 15000
+    timeout: number = 45000
 ) {
     return async (params: URLSearchParams): Promise<PredictionResult<T>> => {
         const controller = new AbortController();
@@ -213,10 +213,7 @@ function createPredictionFetcher<T>(
                 `${API_URL}/api/predictions/${endpoint}?${params.toString()}`,
                 {
                     signal: controller.signal,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 }
             );
             clearTimeout(timeoutId);
@@ -243,10 +240,7 @@ export async function fetchReportData(params: ReportParams): Promise<any> {
 
         const response = await fetch(`${API_URL}/api/report?${queryParams.toString()}`, {
             signal: controller.signal,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache'
-            }
+            headers: { 'Content-Type': 'application/json' }
         });
 
         clearTimeout(timeoutId);

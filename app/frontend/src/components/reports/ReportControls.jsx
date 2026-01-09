@@ -1,5 +1,5 @@
 import { useState, memo, useCallback, useMemo } from 'react';
-import { format, getISOWeek, subWeeks } from 'date-fns';
+import { format, getISOWeek, getISOWeekYear, subWeeks } from 'date-fns';
 
 /** Parse ISO week string (e.g., "2025-W01") into { week, year } */
 const parseISOWeek = (isoWeekString) => {
@@ -19,9 +19,10 @@ const getCurrentDefaults = () => {
     // Default to LAST week (not current) for weekly reports
     const lastWeek = subWeeks(now, 1);
     const isoWeek = getISOWeek(lastWeek);
+    const isoWeekYear = getISOWeekYear(lastWeek);
     return {
         date: format(now, 'yyyy-MM-dd'),
-        week: `${lastWeek.getFullYear()}-W${String(isoWeek).padStart(2, '0')}`,
+        week: `${isoWeekYear}-W${String(isoWeek).padStart(2, '0')}`,
         month: String(now.getMonth() + 1),
         year: String(now.getFullYear())
     };
@@ -31,7 +32,8 @@ const getCurrentDefaults = () => {
 const getMaxWeek = () => {
     const lastWeek = subWeeks(new Date(), 1);
     const isoWeek = getISOWeek(lastWeek);
-    return `${lastWeek.getFullYear()}-W${String(isoWeek).padStart(2, '0')}`;
+    const isoWeekYear = getISOWeekYear(lastWeek);
+    return `${isoWeekYear}-W${String(isoWeek).padStart(2, '0')}`;
 };
 
 const ReportControls = memo(function ReportControls({

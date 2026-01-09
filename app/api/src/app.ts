@@ -41,6 +41,15 @@ app.use('/api', dashboardRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', predictionRoutes);
 
+app.get('/api/cache/status', (_req, res) => {
+    const stats = cacheService.getStats();
+    res.json({
+        ...stats,
+        hitRate: `${cacheService.getHitRate().toFixed(1)}%`,
+        memoryUsageMB: (stats.memoryUsageBytes / 1024 / 1024).toFixed(2)
+    });
+});
+
 // Error handling middleware
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Unhandled error:', err);

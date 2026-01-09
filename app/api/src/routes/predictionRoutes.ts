@@ -5,11 +5,30 @@ import cacheService from '../services/cacheService';
 
 const router: Router = express.Router();
 
-const CACHE_TTL = parseInt(process.env.PREDICTION_CACHE_TTL || '300000', 10);
+const CACHE_TTL = parseInt(process.env.PREDICTION_CACHE_TTL || '60000', 10);
 const FORECAST_CACHE_KEY = 'predictions:forecast';
 const ANOMALIES_CACHE_KEY = 'predictions:anomalies';
 const MODEL_STATUS_CACHE_KEY = 'predictions:model:status';
-const MODEL_STATUS_CACHE_TTL = 60000; // 1 minute for status
+const MODEL_STATUS_CACHE_TTL = 30000;
+
+interface ForecastResponse {
+    predictions: Array<{ timestamp: string; predicted_power: number }>;
+    model_info?: { name: string; accuracy_mape: number; last_trained: string };
+}
+
+interface AnomalyResponse {
+    anomalies: Array<{ timestamp: string; anomaly_score: number }>;
+    summary?: { total_count: number; severity: string };
+}
+
+/** Only cache responses that contain actual data */
+function isValidForecast(data: ForecastResponse): boolean {
+    return Array.isArray(data?.predictions) && data.predictions.length > 0;
+}
+
+function isValidAnomalies(data: AnomalyResponse): boolean {
+    return Array.isArray(data?.anomalies) && data.summary !== undefined;
+}
 
 function handlePredictionError(error: unknown, res: ApiResponse, operation: string): void {
     if (error instanceof PredictionServiceError) {
@@ -47,13 +66,16 @@ router.get('/predictions/forecast', async (req: ApiRequest, res: ApiResponse) =>
 
         // Include pastContextHours in cache key for proper cache isolation
         const cacheKey = `${FORECAST_CACHE_KEY}:${hours}:${pastContextHours}`;
-        const cached = cacheService.get(cacheKey);
-        if (cached) {
+        const cached = cacheService.getData<ForecastResponse>(cacheKey);
+        if (cached && isValidForecast(cached)) {
             return res.json(cached);
         }
 
         const forecast = await predictionService.getForecast(hours, pastContextHours);
-        cacheService.set(cacheKey, forecast, CACHE_TTL);
+
+        if (isValidForecast(forecast)) {
+            cacheService.set(cacheKey, forecast, CACHE_TTL);
+        }
 
         res.json(forecast);
     } catch (error) {
@@ -84,13 +106,16 @@ router.get('/predictions/anomalies', async (req: ApiRequest, res: ApiResponse) =
         }
 
         const cacheKey = `${ANOMALIES_CACHE_KEY}:${hours}:${sensitivity}`;
-        const cached = cacheService.get(cacheKey);
-        if (cached) {
+        const cached = cacheService.getData<AnomalyResponse>(cacheKey);
+        if (cached && isValidAnomalies(cached)) {
             return res.json(cached);
         }
 
         const anomalies = await predictionService.getAnomalies(hours, sensitivity);
-        cacheService.set(cacheKey, anomalies, CACHE_TTL);
+
+        if (isValidAnomalies(anomalies)) {
+            cacheService.set(cacheKey, anomalies, CACHE_TTL);
+        }
 
         res.json(anomalies);
     } catch (error) {
@@ -101,7 +126,7 @@ router.get('/predictions/anomalies', async (req: ApiRequest, res: ApiResponse) =
 // GET /predictions/model/status
 router.get('/predictions/model/status', async (_req: ApiRequest, res: ApiResponse) => {
     try {
-        const cached = cacheService.get(MODEL_STATUS_CACHE_KEY);
+        const cached = cacheService.getData(MODEL_STATUS_CACHE_KEY);
         if (cached) {
             return res.json(cached);
         }

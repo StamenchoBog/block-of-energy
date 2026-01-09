@@ -40,7 +40,9 @@ docker run -p 8000:8000 -e DATABASE_URL=mongodb://host:27017 energy-prediction
 
 ## Data Sufficiency
 
-Predictions require **7 days minimum** of historical data. Before this threshold, endpoints return:
+By default, predictions are available immediately once the model has enough data points to train (48 hourly samples = 2 days minimum). Set `MIN_RELIABLE_DATA_DAYS` to require more historical data before enabling predictions.
+
+If `MIN_RELIABLE_DATA_DAYS > 0` and insufficient data exists, endpoints return:
 
 ```json
 {
@@ -64,7 +66,7 @@ Environment variables (or `.env` file):
 | `RETRAIN_INTERVAL_HOURS` | `24` | Model retraining frequency |
 | `ENABLE_AUTO_TUNING` | `true` | Enable hyperparameter tuning |
 | `TUNING_INTERVAL_DAYS` | `7` | Tuning frequency |
-| `MIN_RELIABLE_DATA_DAYS` | `7` | Minimum data before predictions |
+| `MIN_RELIABLE_DATA_DAYS` | `0` | Minimum data before predictions (0 = disabled) |
 
 ## Models
 
