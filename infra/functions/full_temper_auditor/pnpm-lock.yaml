@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@azure/functions':
-        specifier: 4.7.2
-        version: 4.7.2
+        specifier: 4.11.0
+        version: 4.11.0
       '@grpc/grpc-js':
         specifier: ^1.14.3
         version: 1.14.3
@@ -39,13 +39,13 @@ importers:
 
 packages:
 
-  '@azure/functions@4.7.2':
-    resolution: {integrity: sha512-5ps8yz4gn6oZSzeQbpUreWHFYl/YS03F1Sk/pz7YJphfctRcHuLF5tcrdm9AyRiYzja4Bkd63bju+g/E27opPQ==}
+  '@azure/functions-extensions-base@0.2.0':
+    resolution: {integrity: sha512-ncCkHBNQYJa93dBIh+toH0v1iSgCzSo9tr94s6SMBe7DPWREkaWh8cq33A5P4rPSFX1g5W+3SPvIzDr/6/VOWQ==}
     engines: {node: '>=18.0'}
 
-  '@fastify/busboy@2.1.1':
-    resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
-    engines: {node: '>=14'}
+  '@azure/functions@4.11.0':
+    resolution: {integrity: sha512-J0We2gav3YZFLO9pJlXDKUSOT0r/DzkUaJTaruhm8pwoSMbi4zjsS5N6fARrTel+IBCm77hlD0IgZSKSWvVpUw==}
+    engines: {node: '>=20.0'}
 
   '@grpc/grpc-js@1.14.3':
     resolution: {integrity: sha512-Iq8QQQ/7X3Sac15oB6p0FmUg/klxQvXLeileoqrTRGJYLV+/9tubbr9ipz0GKHjmXVsgFPo/+W+2cA8eNcR+XA==}
@@ -545,10 +545,6 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
-  undici@5.29.0:
-    resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
-    engines: {node: '>=14.0'}
-
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
     hasBin: true
@@ -598,13 +594,13 @@ packages:
 
 snapshots:
 
-  '@azure/functions@4.7.2':
+  '@azure/functions-extensions-base@0.2.0': {}
+
+  '@azure/functions@4.11.0':
     dependencies:
+      '@azure/functions-extensions-base': 0.2.0
       cookie: 0.7.2
       long: 4.0.0
-      undici: 5.29.0
-
-  '@fastify/busboy@2.1.1': {}
 
   '@grpc/grpc-js@1.14.3':
     dependencies:
@@ -794,7 +790,7 @@ snapshots:
 
   durable-functions@3.3.0:
     dependencies:
-      '@azure/functions': 4.7.2
+      '@azure/functions': 4.11.0
       '@opentelemetry/api': 1.9.0
       axios: 1.13.2(debug@2.6.9)
       debug: 2.6.9
@@ -1086,10 +1082,6 @@ snapshots:
   typescript@4.9.5: {}
 
   undici-types@5.26.5: {}
-
-  undici@5.29.0:
-    dependencies:
-      '@fastify/busboy': 2.1.1
 
   uuid@9.0.1: {}
 
