@@ -90,11 +90,84 @@ class DataService:
 
         return data
 
-    async def get_training_data(self, days: int = 7) -> List[Dict[str, Any]]:
-        """Fetch historical data for model training."""
+    async def get_training_data(
+        self, days: int = 7, downsample_hourly: bool = True
+    ) -> List[Dict[str, Any]]:
+        """Fetch historical data for model training.
+
+        Args:
+            days: Number of days of historical data to fetch
+            downsample_hourly: If True, aggregate to hourly means (much faster training)
+        """
         start_date = datetime.utcnow() - timedelta(days=days)
-        data = await self._fetch_and_transform_data(start_date)
-        logger.info(f"Fetched {len(data)} data points for training (last {days} days)")
+
+        if downsample_hourly:
+            data = await self._fetch_hourly_aggregated(start_date)
+            logger.info(
+                f"Fetched {len(data)} hourly data points for training (last {days} days)"
+            )
+        else:
+            data = await self._fetch_and_transform_data(start_date)
+            logger.info(
+                f"Fetched {len(data)} raw data points for training (last {days} days)"
+            )
+        return data
+
+    async def _fetch_hourly_aggregated(
+        self, start_date: datetime
+    ) -> List[Dict[str, Any]]:
+        """Fetch data aggregated to hourly means using MongoDB aggregation.
+
+        This dramatically reduces data volume (50k -> ~168 points for 7 days)
+        while preserving the patterns Prophet needs for forecasting.
+        """
+        start_date_iso = start_date.isoformat()
+
+        pipeline = [
+            # Filter to date range and ensure Power field exists
+            {
+                "$match": {
+                    "processingTimestamp": {"$gte": start_date_iso},
+                    "payload.ENERGY.Power": {"$exists": True},
+                }
+            },
+            # Parse timestamp and extract hour bucket
+            {
+                "$addFields": {
+                    "parsedTimestamp": {"$dateFromString": {"dateString": "$processingTimestamp"}},
+                }
+            },
+            {
+                "$addFields": {
+                    "hourBucket": {
+                        "$dateTrunc": {"date": "$parsedTimestamp", "unit": "hour"}
+                    }
+                }
+            },
+            # Group by hour and calculate mean power
+            {
+                "$group": {
+                    "_id": "$hourBucket",
+                    "avgPower": {"$avg": "$payload.ENERGY.Power"},
+                    "count": {"$sum": 1},
+                }
+            },
+            # Sort by timestamp ascending (Prophet requires chronological order)
+            {"$sort": {"_id": 1}},
+        ]
+
+        cursor = self.collection.aggregate(pipeline)
+        raw_data = await cursor.to_list(length=None)
+
+        # Transform to expected format
+        data = []
+        for doc in raw_data:
+            if doc["_id"] is not None and doc["avgPower"] is not None:
+                data.append({
+                    "timestamp": doc["_id"],
+                    "value": doc["avgPower"],
+                })
+
         return data
 
     async def get_recent_data(self, hours: int = 24) -> List[Dict[str, Any]]:

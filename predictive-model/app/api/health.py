@@ -9,6 +9,7 @@ from app.models.forecaster import forecaster
 from app.models.anomaly_detector import anomaly_detector
 from app.services.data_service import data_service
 from app.config import settings
+from app.core.lifecycle import get_scheduler_status
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,10 @@ async def detailed_health():
     # Check ML models health
     _check_model_health(forecaster, "forecaster", health_status)
     _check_model_health(anomaly_detector, "anomaly_detector", health_status)
+
+    # Check scheduler health
+    scheduler_status = get_scheduler_status()
+    health_status["services"]["scheduler"] = scheduler_status
 
     # Return appropriate response based on status
     if health_status["status"] == "healthy":
