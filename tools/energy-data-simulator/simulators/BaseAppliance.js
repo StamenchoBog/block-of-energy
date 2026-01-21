@@ -135,8 +135,9 @@ class BaseAppliance {
 
     /**
      * Add random variation to a value
+     * Default reduced from 5% to 2% for more realistic power readings
      */
-    addVariation(value, percentVariation = 0.05) {
+    addVariation(value, percentVariation = 0.02) {
         const variation = value * percentVariation * (Math.random() * 2 - 1);
         return value + variation;
     }

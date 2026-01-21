@@ -27,10 +27,10 @@ PROPHET_PARAM_GRID = {
 }
 
 # Isolation Forest parameter grid (27 combinations)
-# Note: contamination capped at 0.05 to prevent over-detection of anomalies
+# Note: contamination capped at 0.02 to prevent over-detection of anomalies
 ISOLATION_FOREST_PARAM_GRID = {
     "n_estimators": [50, 100, 200],
-    "contamination": [0.01, 0.03, 0.05],
+    "contamination": [0.005, 0.01, 0.02],
     "max_features": [0.5, 0.75, 1.0],
 }
 
@@ -46,7 +46,7 @@ DEFAULT_PROPHET_PARAMS = {
 
 DEFAULT_ISOLATION_FOREST_PARAMS = {
     "n_estimators": 100,
-    "contamination": 0.03,
+    "contamination": 0.01,
     "max_features": 1.0,
     "random_state": 42,
     "n_jobs": -1,

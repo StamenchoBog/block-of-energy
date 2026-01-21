@@ -53,9 +53,9 @@ def calculate_anomaly_threshold(sensitivity: float, normalized_scores: np.ndarra
     percentile_rank = 100 - target_anomaly_percent
     percentile_threshold = np.percentile(normalized_scores, percentile_rank)
 
-    # Ensure minimum threshold of 0.5 to avoid flagging normal variations
-    # Even at max sensitivity, we want scores to be notably high
-    min_threshold = 0.5
+    # Ensure minimum threshold of 0.7 to only flag high-confidence anomalies
+    # This filters out marginal detections that are likely just noise
+    min_threshold = 0.7
     threshold = max(percentile_threshold, min_threshold)
 
     return threshold

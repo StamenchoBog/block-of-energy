@@ -39,11 +39,11 @@ class Settings(BaseSettings):
     MIN_SENSITIVITY: float = 0.1
 
     # Anomaly detection thresholds
-    ANOMALY_MIN_POWER_DIFF: int = 50  # Minimum power difference (watts) to catch appliance degradation
+    ANOMALY_MIN_POWER_DIFF: int = 150  # Minimum power difference (watts) to filter normal base load swings
     ANOMALY_SPIKE_THRESHOLD: float = 1.5  # Multiplier for spike detection (actual > expected * threshold)
     ANOMALY_DIP_THRESHOLD: float = 0.5  # Multiplier for dip detection (actual < expected * threshold)
-    ANOMALY_SEVERITY_HIGH_COUNT: int = 10  # Count threshold for high severity
-    ANOMALY_SEVERITY_MEDIUM_COUNT: int = 5  # Count threshold for medium severity
+    ANOMALY_SEVERITY_HIGH_COUNT: int = 20  # Count threshold for high severity
+    ANOMALY_SEVERITY_MEDIUM_COUNT: int = 10  # Count threshold for medium severity
     ANOMALY_SEVERITY_HIGH_SCORE: float = 0.8  # Score threshold for high severity
     ANOMALY_SEVERITY_MEDIUM_SCORE: float = 0.6  # Score threshold for medium severity
 

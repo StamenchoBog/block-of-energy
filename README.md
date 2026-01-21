@@ -292,7 +292,9 @@ See [hyperledger-fabric/README.md](./hyperledger-fabric/README.md) for detailed 
 
 ### Forecast Chart
 
-TODO: Add image
+![Forecast Chart 12h](docs/images/application/forecast_chart_12h.png)
+![Forecast Chart 24h](docs/images/application/forecast_chart_24h.png)
+![Forecast Chart 48h](docs/images/application/forecast_chart_48h.png)
 
 ### Anomalies view
 

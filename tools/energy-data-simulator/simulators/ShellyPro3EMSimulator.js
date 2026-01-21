@@ -86,8 +86,8 @@ class ShellyPro3EMSimulator {
             } else if (config.activeHours) {
                 // Time-based activity
                 if (config.activeHours.includes(hour)) {
-                    // Random activity within active hours
-                    const activity = 0.3 + Math.random() * 0.7;
+                    // Random activity within active hours (70-100% to reduce noise)
+                    const activity = 0.7 + Math.random() * 0.3;
                     totalPower += config.min + (config.max - config.min) * activity;
                 } else {
                     totalPower += config.min;
@@ -98,8 +98,8 @@ class ShellyPro3EMSimulator {
             }
         }
 
-        // Add some random variation
-        return totalPower * (0.95 + Math.random() * 0.1);
+        // Add some random variation (±2% to reduce noise)
+        return totalPower * (0.98 + Math.random() * 0.04);
     }
 
     /**

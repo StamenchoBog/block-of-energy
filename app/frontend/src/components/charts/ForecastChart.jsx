@@ -33,7 +33,7 @@ const createDataset = (label, data, color, options = {}) => ({
     spanGaps: true
 });
 
-const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = false, anomalies = [] }) => {
+const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = false }) => {
     const chartData = useMemo(() => {
         if (!predictions?.length) return null;
 
@@ -43,19 +43,11 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
 
         const nowIndex = findNowIndex(sorted);
         const labels = sorted.map(item => formatUTCToLocalTime(item.timestamp));
-        const anomalySet = new Set(anomalies.map(a => a.timestamp));
 
         // Split data at nowIndex
         const power = splitAtIndex(sorted, nowIndex, d => d.predicted_power);
         const upper = splitAtIndex(sorted, nowIndex, d => d.upper_bound);
         const lower = splitAtIndex(sorted, nowIndex, d => d.lower_bound);
-
-        // Anomaly point highlighting
-        const getPointRadius = (item, idx, threshold) =>
-            (threshold ? idx < nowIndex : idx >= nowIndex) && anomalySet.has(item.timestamp) ? 8 : 0;
-
-        const getPointColor = (item) =>
-            anomalySet.has(item.timestamp) ? 'rgba(239, 68, 68, 1)' : CHART_COLORS.purple.border;
 
         return {
             labels,
@@ -63,17 +55,11 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
             datasets: [
                 // Hindcast (past) - dashed
                 createDataset('Hindcast (W)', power.past, 'rgba(147, 51, 234, 0.6)', {
-                    dashed: true, tension: 0.1,
-                    pointRadius: sorted.map((item, i) => getPointRadius(item, i, true)),
-                    pointBackgroundColor: sorted.map(getPointColor),
-                    pointBorderColor: 'white', pointBorderWidth: 2
+                    dashed: true, tension: 0.1
                 }),
                 // Forecast (future) - solid
                 createDataset('Forecast (W)', power.future, CHART_COLORS.purple.border, {
-                    borderWidth: 3,
-                    pointRadius: sorted.map((item, i) => getPointRadius(item, i, false)),
-                    pointBackgroundColor: sorted.map(getPointColor),
-                    pointBorderColor: 'white', pointBorderWidth: 2
+                    borderWidth: 3
                 }),
                 // Confidence bands
                 { ...createDataset('Upper', upper.future, 'transparent', { fill: '+1', order: 10 }),
@@ -82,7 +68,7 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
                   backgroundColor: 'rgba(147, 51, 234, 0.1)' }
             ]
         };
-    }, [predictions, anomalies]);
+    }, [predictions]);
 
     const nowIndex = chartData?.nowIndex ?? 0;
 
@@ -195,12 +181,6 @@ const ForecastChart = memo(({ predictions = [], modelInfo = null, loading = fals
                     <div className="w-6 h-3 rounded bg-purple-100 mr-2"></div>
                     <span className="text-gray-600">Confidence</span>
                 </div>
-                {anomalies.length > 0 && (
-                    <div className="flex items-center">
-                        <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                        <span className="text-gray-600">Anomaly</span>
-                    </div>
-                )}
             </div>
         </div>
     );

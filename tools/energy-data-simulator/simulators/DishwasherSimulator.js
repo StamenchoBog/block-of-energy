@@ -81,9 +81,11 @@ class DishwasherSimulator extends BaseAppliance {
                 this.currentPhase = phase.name;
                 this.cyclePhaseIndex = i;
 
-                // Get power for this phase
+                // Get power for this phase with realistic variation
                 const basePower = this.config.power[phase.power];
-                this.currentPower = this.addVariation(basePower, 0.08);
+                // Resistive heating is very stable (±2%), motors vary slightly more (±3%)
+                const variation = phase.power === 'heating' ? 0.02 : 0.03;
+                this.currentPower = this.addVariation(basePower, variation);
 
                 break;
             }

@@ -115,8 +115,8 @@ class AirConditionerSimulator extends BaseAppliance {
                 this.lastDefrost = currentTime.getTime();
                 console.log(`[${this.name}] Defrost complete, resuming heating`);
             } else {
-                // During defrost, only fan runs
-                this.currentPower = this.addVariation(this.config.power.fanOnly, 0.1);
+                // During defrost, only fan runs (±3% variation)
+                this.currentPower = this.addVariation(this.config.power.fanOnly, 0.03);
                 this.updateIndoorTemperature();
                 return this.currentPower;
             }
@@ -126,24 +126,24 @@ class AirConditionerSimulator extends BaseAppliance {
         const powerFactor = this.getPowerFactor();
 
         if (powerFactor <= 0.1) {
-            // Near target - low power or fan only
+            // Near target - low power or fan only (±3% - stable maintaining)
             this.compressorState = 'low';
             this.currentPhase = 'maintaining';
-            this.currentPower = this.addVariation(this.config.power.compressorLow, 0.1);
+            this.currentPower = this.addVariation(this.config.power.compressorLow, 0.03);
         } else if (powerFactor <= 0.5) {
-            // Moderate heating needed
+            // Moderate heating needed (±4% - inverter modulation)
             this.compressorState = 'mid';
             this.currentPhase = 'heating_mid';
             const targetPower = this.config.power.compressorLow +
                 (this.config.power.compressorMid - this.config.power.compressorLow) * powerFactor * 2;
-            this.currentPower = this.addVariation(targetPower, 0.08);
+            this.currentPower = this.addVariation(targetPower, 0.04);
         } else {
-            // Full heating
+            // Full heating (±4% - inverter modulation)
             this.compressorState = 'high';
             this.currentPhase = 'heating_high';
             const targetPower = this.config.power.compressorMid +
                 (this.config.power.compressorHigh - this.config.power.compressorMid) * (powerFactor - 0.5) * 2;
-            this.currentPower = this.addVariation(targetPower, 0.08);
+            this.currentPower = this.addVariation(targetPower, 0.04);
         }
 
         this.updateIndoorTemperature();

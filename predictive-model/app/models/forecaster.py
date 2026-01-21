@@ -138,11 +138,24 @@ class EnergyForecaster(BaseModelAsync):
             past_context_hours: Number of past hours to include for context (hindcast)
         """
         try:
-            # Create future dataframe with enough periods for the forecast
-            future = self.model.make_future_dataframe(periods=hours, freq="H")
+            now = datetime.utcnow()
+
+            # Calculate required periods to reach now + hours, accounting for data gaps
+            # Prophet extends from the last training timestamp, not from "now"
+            training_end = self.model.history['ds'].max()
+            hours_since_training = max(0, (now - training_end).total_seconds() / 3600)
+            required_periods = int(hours + hours_since_training) + 1  # +1 for rounding safety
+
+            if hours_since_training > 1:
+                logger.info(
+                    f"Training data ends {hours_since_training:.1f}h ago, "
+                    f"extending forecast periods from {hours} to {required_periods}"
+                )
+
+            # Create future dataframe with enough periods to bridge any data gap
+            future = self.model.make_future_dataframe(periods=required_periods, freq="H")
             forecast = self.model.predict(future)
 
-            now = datetime.utcnow()
             start_time = now - timedelta(hours=past_context_hours)
             end_time = now + timedelta(hours=hours)
 

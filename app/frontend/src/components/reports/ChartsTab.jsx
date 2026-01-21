@@ -163,7 +163,6 @@ const ChartsTab = memo(function ChartsTab() {
                         predictions={forecast?.predictions || []}
                         modelInfo={forecast?.model_info}
                         loading={predictionsLoading}
-                        anomalies={anomalies?.anomalies || []}
                     />
                 </div>
             )}

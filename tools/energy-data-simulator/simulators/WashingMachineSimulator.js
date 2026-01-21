@@ -89,9 +89,13 @@ class WashingMachineSimulator extends BaseAppliance {
                     const phaseProgress = (cycleMinutes - elapsedMinutes) / phase.duration;
                     // Spin starts slow, ramps up to full speed
                     const spinFactor = 0.5 + (phaseProgress * 0.5);
-                    this.currentPower = this.addVariation(basePower * spinFactor, 0.1);
+                    this.currentPower = this.addVariation(basePower * spinFactor, 0.03);
+                } else if (phase.power === 'heating') {
+                    // Resistive heating is very stable (±2%)
+                    this.currentPower = this.addVariation(basePower, 0.02);
                 } else {
-                    this.currentPower = this.addVariation(basePower, 0.08);
+                    // Motors have slight variation due to load (±3%)
+                    this.currentPower = this.addVariation(basePower, 0.03);
                 }
 
                 break;
