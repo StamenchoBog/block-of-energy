@@ -298,7 +298,7 @@ See [hyperledger-fabric/README.md](./hyperledger-fabric/README.md) for detailed 
 
 ### Anomalies view
 
-TODO: Add image
+![Anomalies Chart](docs/images/application/anomalies_chart.png)
 
 ## Future Improvements
 
