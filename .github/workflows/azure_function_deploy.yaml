@@ -104,7 +104,7 @@ jobs:
           path: ./infra/functions/${{ matrix.function.name }}
 
       - name: Azure Login
-        uses: Azure/login@v2
+        uses: Azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
