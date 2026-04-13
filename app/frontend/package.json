@@ -10,20 +10,20 @@
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",
-    "@tailwindcss/vite": "^4.1.18",
-    "@types/react": "^19.2.9",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "astro": "^5.16.15",
+    "astro": "^6.1.5",
     "chart.js": "^4.5.1",
     "chartjs-plugin-annotation": "^3.1.0",
     "date-fns": "^4.1.0",
-    "react": "^19.2.3",
+    "react": "^19.2.5",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "^19.2.3",
-    "tailwindcss": "^4.1.18"
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "daisyui": "^5.5.14",
-    "dotenv": "^17.2.3"
+    "daisyui": "^5.5.19",
+    "dotenv": "^17.4.2"
   }
 }
