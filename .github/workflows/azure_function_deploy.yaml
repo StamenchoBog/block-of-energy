@@ -1,117 +1,117 @@
-name: Deploy Function App to Azure
+# name: Deploy Function App to Azure
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - "infra/functions/**"
-  workflow_dispatch:
+# on:
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - "infra/functions/**"
+#   workflow_dispatch:
 
-jobs:
-  build:
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
+# jobs:
+#   build:
+#     permissions:
+#       contents: read
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: 9
+#       - name: Setup pnpm
+#         uses: pnpm/action-setup@v5
+#         with:
+#           version: 9
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "20"
-          cache: "pnpm"
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v6
+#         with:
+#           node-version: "20"
+#           cache: "pnpm"
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
+#       - name: Setup Python
+#         uses: actions/setup-python@v6
+#         with:
+#           python-version: "3.12"
 
-      - name: Build process_iot_hub_message
-        run: |
-          pip install -r requirements.txt --target ./.python_packages/lib/site-packages
-        working-directory: ./infra/functions/process_iot_hub_message
+#       - name: Build process_iot_hub_message
+#         run: |
+#           pip install -r requirements.txt --target ./.python_packages/lib/site-packages
+#         working-directory: ./infra/functions/process_iot_hub_message
 
-      - name: Archive process_iot_hub_message
-        uses: actions/upload-artifact@v7
-        with:
-          name: process_iot_hub_message_artifact
-          path: ./infra/functions/process_iot_hub_message
+#       - name: Archive process_iot_hub_message
+#         uses: actions/upload-artifact@v7
+#         with:
+#           name: process_iot_hub_message_artifact
+#           path: ./infra/functions/process_iot_hub_message
 
-      - name: Build cosmos_db_writer
-        run: |
-          pip install -r requirements.txt --target ./.python_packages/lib/site-packages
-        working-directory: ./infra/functions/cosmos_db_writer
+#       - name: Build cosmos_db_writer
+#         run: |
+#           pip install -r requirements.txt --target ./.python_packages/lib/site-packages
+#         working-directory: ./infra/functions/cosmos_db_writer
 
-      - name: Archive cosmos_db_writer
-        uses: actions/upload-artifact@v7
-        with:
-          name: cosmos_db_writer_artifact
-          path: ./infra/functions/cosmos_db_writer
+#       - name: Archive cosmos_db_writer
+#         uses: actions/upload-artifact@v7
+#         with:
+#           name: cosmos_db_writer_artifact
+#           path: ./infra/functions/cosmos_db_writer
 
-      - name: Build continuous_temper_auditor
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
-        working-directory: ./infra/functions/continuous_temper_auditor
+#       - name: Build continuous_temper_auditor
+#         run: |
+#           pnpm install --frozen-lockfile
+#           pnpm build
+#         working-directory: ./infra/functions/continuous_temper_auditor
 
-      - name: Archive continuous_temper_auditor
-        uses: actions/upload-artifact@v7
-        with:
-          name: continuous_temper_auditor_artifact
-          path: ./infra/functions/continuous_temper_auditor
+#       - name: Archive continuous_temper_auditor
+#         uses: actions/upload-artifact@v7
+#         with:
+#           name: continuous_temper_auditor_artifact
+#           path: ./infra/functions/continuous_temper_auditor
 
-      - name: Build full_temper_auditor
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
-        working-directory: ./infra/functions/full_temper_auditor
+#       - name: Build full_temper_auditor
+#         run: |
+#           pnpm install --frozen-lockfile
+#           pnpm build
+#         working-directory: ./infra/functions/full_temper_auditor
 
-      - name: Archive full_temper_auditor
-        uses: actions/upload-artifact@v7
-        with:
-          name: full_temper_auditor_artifact
-          path: ./infra/functions/full_temper_auditor
+#       - name: Archive full_temper_auditor
+#         uses: actions/upload-artifact@v7
+#         with:
+#           name: full_temper_auditor_artifact
+#           path: ./infra/functions/full_temper_auditor
 
-  deploy:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        function:
-          - name: process_iot_hub_message
-            app: bk-of-energy-modifier
-          - name: cosmos_db_writer
-            app: bk-of-energy-cosmodb-writer
-          - name: continuous_temper_auditor
-            app: bk-of-energy-continuous-temper-auditor
-          - name: full_temper_auditor
-            app: bk-of-energy-full-temper-auditor
-    needs: build
-    permissions:
-      contents: write
-      id-token: write
+#   deploy:
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         function:
+#           - name: process_iot_hub_message
+#             app: bk-of-energy-modifier
+#           - name: cosmos_db_writer
+#             app: bk-of-energy-cosmodb-writer
+#           - name: continuous_temper_auditor
+#             app: bk-of-energy-continuous-temper-auditor
+#           - name: full_temper_auditor
+#             app: bk-of-energy-full-temper-auditor
+#     needs: build
+#     permissions:
+#       contents: write
+#       id-token: write
 
-    steps:
-      - name: Download ${{ matrix.function.name }} artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.function.name }}_artifact
-          path: ./infra/functions/${{ matrix.function.name }}
+#     steps:
+#       - name: Download ${{ matrix.function.name }} artifact
+#         uses: actions/download-artifact@v8
+#         with:
+#           name: ${{ matrix.function.name }}_artifact
+#           path: ./infra/functions/${{ matrix.function.name }}
 
-      - name: Azure Login
-        uses: Azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#       - name: Azure Login
+#         uses: Azure/login@v3
+#         with:
+#           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+#           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+#           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy ${{ matrix.function.name }}
-        uses: Azure/functions-action@v1
-        with:
-          app-name: ${{ matrix.function.app }}
-          package: ./infra/functions/${{ matrix.function.name }}
+#       - name: Deploy ${{ matrix.function.name }}
+#         uses: Azure/functions-action@v1
+#         with:
+#           app-name: ${{ matrix.function.app }}
+#           package: ./infra/functions/${{ matrix.function.name }}
