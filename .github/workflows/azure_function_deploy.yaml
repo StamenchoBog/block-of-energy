@@ -98,7 +98,7 @@ jobs:
 
     steps:
       - name: Download ${{ matrix.function.name }} artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.function.name }}_artifact
           path: ./infra/functions/${{ matrix.function.name }}
