@@ -50,7 +50,7 @@ jobs:
         az version
 
     - name: OpenTofu - Setup Tofu
-      uses: opentofu/setup-opentofu@v1.0.8
+      uses: opentofu/setup-opentofu@v2.0.0
       with:
         tofu_version: 1.9.1
 
