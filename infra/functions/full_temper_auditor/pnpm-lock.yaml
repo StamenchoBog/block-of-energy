@@ -36,8 +36,8 @@ importers:
         version: 6.21.0
     devDependencies:
       '@types/node':
-        specifier: ~18.19.130
-        version: 18.19.130
+        specifier: ~25.6.0
+        version: 25.6.0
       azure-functions-core-tools:
         specifier: ^4.9.0
         version: 4.9.0
@@ -131,8 +131,8 @@ packages:
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
 
-  '@types/node@18.19.130':
-    resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
+  '@types/node@25.6.0':
+    resolution: {integrity: sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==}
 
   '@types/webidl-conversions@7.0.3':
     resolution: {integrity: sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==}
@@ -554,8 +554,8 @@ packages:
     engines: {node: '>=4.2.0'}
     hasBin: true
 
-  undici-types@5.26.5:
-    resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
+  undici-types@7.19.2:
+    resolution: {integrity: sha512-qYVnV5OEm2AW8cJMCpdV20CDyaN3g0AjDlOGf1OW4iaDEx8MwdtChUp4zu4H0VP3nDRF/8RKWH+IPp9uW0YGZg==}
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
@@ -689,9 +689,9 @@ snapshots:
 
   '@protobufjs/utf8@1.1.0': {}
 
-  '@types/node@18.19.130':
+  '@types/node@25.6.0':
     dependencies:
-      undici-types: 5.26.5
+      undici-types: 7.19.2
 
   '@types/webidl-conversions@7.0.3': {}
 
@@ -701,7 +701,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 18.19.130
+      '@types/node': 25.6.0
     optional: true
 
   agent-base@6.0.2:
@@ -1025,7 +1025,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 18.19.130
+      '@types/node': 25.6.0
       long: 5.3.2
 
   proxy-from-env@2.1.0: {}
@@ -1089,7 +1089,7 @@ snapshots:
 
   typescript@4.9.5: {}
 
-  undici-types@5.26.5: {}
+  undici-types@7.19.2: {}
 
   uuid@9.0.1: {}
 
