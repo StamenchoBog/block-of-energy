@@ -7,291 +7,97 @@ on:
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: contains(fromJSON('["dependabot[bot]", "app/dependabot"]'), github.actor)
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Get PR metadata
-        id: pr-metadata
+      - name: Determine action
+        id: determine
         run: |
-          set -e
-          
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_BODY="${{ github.event.pull_request.body }}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
           
-          # Validate inputs
-          if [[ -z "$PR_TITLE" ]]; then
-            echo "❌ PR title is empty"
-            exit 1
-          fi
+          echo "📋 Analyzing: $PR_TITLE"
           
-          if [[ -z "$PR_NUMBER" ]]; then
-            echo "❌ PR number is missing"
-            exit 1
-          fi
-          
-          echo "📋 Processing PR #$PR_NUMBER: '$PR_TITLE'"
-          
-          echo "PR_TITLE=$PR_TITLE" >> $GITHUB_OUTPUT
-          echo "PR_BODY=$PR_BODY" >> $GITHUB_OUTPUT
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT
-      
-      - name: Check if patch update
-        id: check-patch
-        run: |
-          set -e
-          PR_TITLE="${{ steps.pr-metadata.outputs.PR_TITLE }}"
-          
-          # Extract version numbers for proper patch detection  
-          if echo "$PR_TITLE" | grep -qE "(Bump.*from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+|deps\([^)]+\): bump.*from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+)"; then
-            FROM_VERSION=$(echo "$PR_TITLE" | grep -oE "from [0-9]+\.[0-9]+\.[0-9]+" | sed 's/from //')
-            TO_VERSION=$(echo "$PR_TITLE" | grep -oE "to [0-9]+\.[0-9]+\.[0-9]+" | sed 's/to //')
+          # Check if patch update (x.y.z -> x.y.z+1)
+          IS_PATCH=false
+          if echo "$PR_TITLE" | grep -qE "from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+"; then
+            FROM_VER=$(echo "$PR_TITLE" | grep -oE "from [0-9]+\.[0-9]+\.[0-9]+" | cut -d' ' -f2)
+            TO_VER=$(echo "$PR_TITLE" | grep -oE "to [0-9]+\.[0-9]+\.[0-9]+" | cut -d' ' -f2)
             
-            FROM_MAJOR=$(echo "$FROM_VERSION" | cut -d. -f1)
-            FROM_MINOR=$(echo "$FROM_VERSION" | cut -d. -f2)
-            FROM_PATCH=$(echo "$FROM_VERSION" | cut -d. -f3)
+            FROM_MAJ_MIN=$(echo "$FROM_VER" | cut -d. -f1,2)
+            TO_MAJ_MIN=$(echo "$TO_VER" | cut -d. -f1,2)
             
-            TO_MAJOR=$(echo "$TO_VERSION" | cut -d. -f1)
-            TO_MINOR=$(echo "$TO_VERSION" | cut -d. -f2)
-            TO_PATCH=$(echo "$TO_VERSION" | cut -d. -f3)
-            
-            # It's a patch update if only patch version changed
-            if [[ "$FROM_MAJOR" == "$TO_MAJOR" && "$FROM_MINOR" == "$TO_MINOR" && "$FROM_PATCH" != "$TO_PATCH" ]]; then
-              echo "IS_PATCH=true" >> $GITHUB_OUTPUT
-              echo "✅ Detected patch update: $FROM_VERSION -> $TO_VERSION"
+            if [[ "$FROM_MAJ_MIN" == "$TO_MAJ_MIN" ]]; then
+              IS_PATCH=true
+              echo "✅ Patch update: $FROM_VER -> $TO_VER"
             else
-              echo "IS_PATCH=false" >> $GITHUB_OUTPUT
-              echo "❌ Not a patch update: $FROM_VERSION -> $TO_VERSION (major/minor change)"
+              echo "❌ Major/minor update: $FROM_VER -> $TO_VER"
             fi
-          else
-            echo "IS_PATCH=false" >> $GITHUB_OUTPUT
-            echo "❌ Not a standard version bump format: $PR_TITLE"
           fi
-
-      - name: Check for security updates
-        id: check-security
-        run: |
-          PR_BODY="${{ steps.pr-metadata.outputs.PR_BODY }}"
           
-          # Check if it's a security update
-          if echo "$PR_BODY" | grep -i -E "(security|vulnerability|CVE-|GHSA-)"; then
-            echo "IS_SECURITY=true" >> $GITHUB_OUTPUT
+          # Check if security update
+          IS_SECURITY=false
+          if echo "$PR_BODY" | grep -qi "security\|vulnerability\|CVE-\|GHSA-"; then
+            IS_SECURITY=true
             echo "🔒 Security update detected"
-          else
-            echo "IS_SECURITY=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No security indicators found"
-          fi
-
-      - name: Check trusted dependencies
-        id: check-trusted
-        run: |
-          PR_TITLE="${{ steps.pr-metadata.outputs.PR_TITLE }}"
-          
-          # Extract package name from PR title with better regex
-          PACKAGE_NAME=""
-          
-          # Try standard Dependabot format: "Bump package from x.y.z to a.b.c"
-          if echo "$PR_TITLE" | grep -qE "^Bump [^[:space:]]+ from"; then
-            PACKAGE_NAME=$(echo "$PR_TITLE" | sed -n 's/^Bump \([^[:space:]]*\) from.*/\1/p')
           fi
           
-          # Try deps format: "deps(scope): bump package from x.y.z to a.b.c"
-          if [[ -z "$PACKAGE_NAME" ]] && echo "$PR_TITLE" | grep -qE "deps\([^)]+\): bump [^[:space:]]+ from"; then
-            PACKAGE_NAME=$(echo "$PR_TITLE" | sed -n 's/.*deps([^)]*): bump \([^[:space:]]*\) from.*/\1/p')
-          fi
-          
-          # Fallback: try to extract package name from other formats
-          if [[ -z "$PACKAGE_NAME" ]]; then
-            PACKAGE_NAME=$(echo "$PR_TITLE" | grep -oE "@?[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)?" | head -1)
-          fi
-          
-          echo "📦 Checking package: $PACKAGE_NAME"
-          
+          # Check if trusted package (simple list)
           IS_TRUSTED=false
-          TRUST_REASON=""
+          PACKAGE=$(echo "$PR_TITLE" | grep -oE "(^Bump |: bump )([^[:space:]]+)" | sed 's/.*bump //' | head -1)
           
-          # 1. Check if it's a Microsoft/Azure official package
-          if echo "$PACKAGE_NAME" | grep -qE "^@azure/|^@microsoft/"; then
+          if [[ "$PACKAGE" =~ ^@(types|azure|microsoft)/ ]] || [[ "$PACKAGE" =~ ^(typescript|eslint|prettier|react|express|mongodb|axios|date-fns|winston|helmet|cors|rimraf|astro)$ ]]; then
             IS_TRUSTED=true
-            TRUST_REASON="Microsoft/Azure official package"
+            echo "✅ Trusted package: $PACKAGE"
+          else
+            echo "⚠️ Untrusted package: $PACKAGE"
           fi
           
-          # 2. Check if it's a TypeScript types package
-          if echo "$PACKAGE_NAME" | grep -qE "^@types/"; then
-            IS_TRUSTED=true
-            TRUST_REASON="TypeScript definitions (@types)"
+          # Determine action
+          if [[ "$IS_PATCH" == "true" && "$IS_TRUSTED" == "true" ]] || [[ "$IS_SECURITY" == "true" ]]; then
+            echo "ACTION=auto-merge" >> $GITHUB_OUTPUT
+            echo "🚀 Will auto-merge"
+          else
+            echo "ACTION=manual-review" >> $GITHUB_OUTPUT
+            echo "👀 Requires manual review"
           fi
           
-          # 3. Check npm registry for verified publishers
-          if [[ "$IS_TRUSTED" != "true" && -n "$PACKAGE_NAME" ]]; then
-            echo "🔍 Checking npm registry for $PACKAGE_NAME..."
-            
-            # Get package info from npm registry with timeout and error handling
-            NPM_INFO=""
-            if ! NPM_INFO=$(curl -s --max-time 10 --fail "https://registry.npmjs.org/$PACKAGE_NAME" 2>/dev/null); then
-              echo "⚠️ Failed to fetch npm registry info for $PACKAGE_NAME"
-              NPM_INFO="{}"
-            fi
-            
-            # Check for verified publisher status with error handling
-            VERIFIED_PUBLISHER=""
-            if command -v jq >/dev/null 2>&1; then
-              VERIFIED_PUBLISHER=$(echo "$NPM_INFO" | jq -r '.publisher.name // empty' 2>/dev/null || echo "")
-            fi
-            
-            # Check weekly downloads with timeout and error handling
-            WEEKLY_DOWNLOADS="0"
-            if ! WEEKLY_DOWNLOADS=$(curl -s --max-time 10 --fail "https://api.npmjs.org/downloads/point/last-week/$PACKAGE_NAME" 2>/dev/null | jq -r '.downloads // 0' 2>/dev/null); then
-              echo "⚠️ Failed to fetch download stats for $PACKAGE_NAME"
-              WEEKLY_DOWNLOADS="0"
-            fi
-            
-            # Validate downloads is a number
-            if ! [[ "$WEEKLY_DOWNLOADS" =~ ^[0-9]+$ ]]; then
-              WEEKLY_DOWNLOADS="0"
-            fi
-            
-            # Check if package has high download count (>100k weekly)
-            if [[ "$WEEKLY_DOWNLOADS" -gt 100000 ]]; then
-              IS_TRUSTED=true
-              TRUST_REASON="High usage package (${WEEKLY_DOWNLOADS} weekly downloads)"
-            fi
-            
-            # Check for verified publishers (npm verified orgs)
-            VERIFIED_ORGS=(
-              "microsoft"
-              "google" 
-              "facebook"
-              "typescript"
-              "eslint"
-              "prettier"
-              "vitejs"
-              "rollup"
-              "webpack"
-              "babel"
-              "react"
-              "vue"
-              "angular"
-              "svelte"
-              "astro"
-              "vercel"
-              "netlify"
-              "express"
-              "fastify"
-              "mongodb"
-              "redis"
-              "aws-sdk"
-              "date-fns"
-              "lodash"
-            )
-            
-            PACKAGE_ORG=$(echo "$PACKAGE_NAME" | grep -oE "^@[^/]+" | sed 's/@//' || echo "")
-            PACKAGE_BARE=$(echo "$PACKAGE_NAME" | sed 's/@[^/]*\///')
-            
-            for org in "${VERIFIED_ORGS[@]}"; do
-              if [[ "$PACKAGE_ORG" == "$org" || "$PACKAGE_BARE" == "$org" ]]; then
-                IS_TRUSTED=true
-                TRUST_REASON="Verified organization: $org"
-                break
-              fi
-            done
-          fi
-          
-          # 4. Check against our current package.json files for existing dependencies
-          if [[ "$IS_TRUSTED" != "true" && -n "$PACKAGE_NAME" ]]; then
-            echo "📋 Checking if $PACKAGE_NAME is already in use..."
-            
-            # Check if package exists in any of our package.json files
-            EXISTING_USAGE=$(find . -name "package.json" -not -path "./node_modules/*" -exec grep -l "\"$PACKAGE_NAME\"" {} \; 2>/dev/null | wc -l)
-            
-            if [[ "$EXISTING_USAGE" -gt 0 ]]; then
-              IS_TRUSTED=true
-              TRUST_REASON="Already in use in $EXISTING_USAGE workspace(s)"
-            fi
-          fi
-          
+          echo "PACKAGE=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "IS_PATCH=$IS_PATCH" >> $GITHUB_OUTPUT
+          echo "IS_SECURITY=$IS_SECURITY" >> $GITHUB_OUTPUT
           echo "IS_TRUSTED=$IS_TRUSTED" >> $GITHUB_OUTPUT
-          echo "TRUST_REASON=$TRUST_REASON" >> $GITHUB_OUTPUT
-          
-          if [[ "$IS_TRUSTED" == "true" ]]; then
-            echo "✅ Trusted dependency: $PACKAGE_NAME ($TRUST_REASON)"
-          else
-            echo "❌ Untrusted dependency: $PACKAGE_NAME"
-          fi
 
-      - name: Wait for CI checks
-        if: steps.check-patch.outputs.IS_PATCH == 'true' || steps.check-security.outputs.IS_SECURITY == 'true'
-        uses: fountainhead/action-wait-for-check@v1.2.0
-        id: wait-for-checks
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: "ci" # Adjust this to match your CI check name
-          ref: ${{ github.event.pull_request.head.sha }}
-          timeoutSeconds: 600
-          intervalSeconds: 10
-        continue-on-error: true
-
-      - name: Auto-merge patch updates
-        if: |
-          (steps.check-patch.outputs.IS_PATCH == 'true' && steps.check-trusted.outputs.IS_TRUSTED == 'true') ||
-          (steps.check-security.outputs.IS_SECURITY == 'true')
-        env:
-          PR_NUMBER: ${{ steps.pr-metadata.outputs.PR_NUMBER }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Auto-merge
+        if: steps.determine.outputs.ACTION == 'auto-merge'
         run: |
-          echo "🚀 Auto-merging PR #$PR_NUMBER"
-          
-          # Enable auto-merge
-          gh pr merge $PR_NUMBER --auto --squash --delete-branch
-          
-          echo "✅ Auto-merge enabled for PR #$PR_NUMBER"
-
-      - name: Add comment for manual review
-        if: |
-          steps.check-patch.outputs.IS_PATCH != 'true' && 
-          steps.check-security.outputs.IS_SECURITY != 'true'
+          echo "🚀 Auto-merging PR #${{ github.event.pull_request.number }}"
+          gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
         env:
-          PR_NUMBER: ${{ steps.pr-metadata.outputs.PR_NUMBER }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add review comment
+        if: steps.determine.outputs.ACTION == 'manual-review'
         run: |
-          TRUST_REASON="${{ steps.check-trusted.outputs.TRUST_REASON }}"
-          IS_TRUSTED="${{ steps.check-trusted.outputs.IS_TRUSTED }}"
+          COMMENT="📋 **Manual Review Required**
+
+          This dependency update needs manual review:
+          - Package: \`${{ steps.determine.outputs.PACKAGE }}\`
+          - Patch update: ${{ steps.determine.outputs.IS_PATCH }}
+          - Trusted package: ${{ steps.determine.outputs.IS_TRUSTED }}
+          - Security update: ${{ steps.determine.outputs.IS_SECURITY }}
           
-          COMMENT_BODY="📋 **Manual Review Required**
+          To auto-merge: \`@dependabot squash and merge\`"
           
-          This dependency update requires manual review because:
-          - It's not a patch update (likely minor or major version change)
-          - No security vulnerability was detected
-          
-          **Trust Status:** "
-          
-          if [[ "$IS_TRUSTED" == "true" ]]; then
-            COMMENT_BODY+="✅ Trusted dependency ($TRUST_REASON)"
-          else
-            COMMENT_BODY+="❌ Untrusted dependency - please verify package safety"
-          fi
-          
-          COMMENT_BODY+="
-          
-          Please review the changes and merge manually if appropriate.
-          
-          To auto-merge this PR if you approve it, comment: \`@dependabot squash and merge\`"
-          
-          gh pr comment $PR_NUMBER --body "$COMMENT_BODY"
+          gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add labels
-        env:
-          PR_NUMBER: ${{ steps.pr-metadata.outputs.PR_NUMBER }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Add appropriate labels
-          if [[ "${{ steps.check-patch.outputs.IS_PATCH }}" == "true" ]]; then
-            gh pr edit $PR_NUMBER --add-label "dependencies,patch,auto-merge"
-          elif [[ "${{ steps.check-security.outputs.IS_SECURITY }}" == "true" ]]; then
-            gh pr edit $PR_NUMBER --add-label "dependencies,security,auto-merge"
+          if [[ "${{ steps.determine.outputs.ACTION }}" == "auto-merge" ]]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "dependencies,auto-merge"
           else
-            gh pr edit $PR_NUMBER --add-label "dependencies,manual-review"
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "dependencies,manual-review"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
