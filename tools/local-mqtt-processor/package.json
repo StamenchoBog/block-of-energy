@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "mongodb": "^7.0.0",
-    "mqtt": "^5.14.1"
+    "mqtt": "^5.15.1"
   }
 }
