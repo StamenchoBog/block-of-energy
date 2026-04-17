@@ -1,11 +1,208 @@
 ---
 version: 2
 updates:
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    
+  # Terraform Infrastructure
   - package-ecosystem: terraform
     directory: "/infra"
     schedule:
       interval: "weekly"
+
+  # App API (Node.js/pnpm)
+  - package-ecosystem: "npm"
+    directory: "/app/api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(api)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # App Frontend (Node.js/pnpm)
+  - package-ecosystem: "npm"
+    directory: "/app/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday" 
+      time: "09:00"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(frontend)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Continuous Temper Auditor Function (Node.js/npm)
+  - package-ecosystem: "npm"
+    directory: "/infra/functions/continuous_temper_auditor"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(continuous-auditor)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Full Temper Auditor Function (Node.js/npm)
+  - package-ecosystem: "npm"
+    directory: "/infra/functions/full_temper_auditor"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(full-auditor)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Hash and Store Function (Node.js/npm)
+  - package-ecosystem: "npm"
+    directory: "/infra/functions/hash_and_store_to_ledger"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(hash-store)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Cosmos DB Writer Function (Python)
+  - package-ecosystem: "pip"
+    directory: "/infra/functions/cosmos_db_writer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(cosmos-writer)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Process IoT Hub Message Function (Python)
+  - package-ecosystem: "pip"
+    directory: "/infra/functions/process_iot_hub_message"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(iot-processor)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Energy Data Simulator (Node.js/npm)
+  - package-ecosystem: "npm"
+    directory: "/tools/energy-data-simulator"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(simulator)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Local MQTT Processor (Node.js/npm)
+  - package-ecosystem: "npm"
+    directory: "/tools/local-mqtt-processor"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: "production"
+      - dependency-type: "development"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(mqtt-processor)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Predictive Model (Python)
+  - package-ecosystem: "pip"
+    directory: "/predictive-model"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "production"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(ml-model)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
+
+  # Forward Proxy MQTT Forwarder (Python)
+  - package-ecosystem: "pip"
+    directory: "/forward-proxy/mqtt-forwarder"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: "production"
+    versioning-strategy: increase
+    commit-message:
+      prefix: "deps(mqtt-forwarder)"
+      include: "scope"
+    assignees:
+      - "stamencho.bogdanovski"
