@@ -1,103 +1,103 @@
-name: Dependabot Auto-Merge
+# name: Dependabot Auto-Merge
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+# on:
+#   pull_request:
+#     types: [opened, synchronize, reopened]
 
-jobs:
-  auto-merge:
-    runs-on: ubuntu-latest
-    if: contains(fromJSON('["dependabot[bot]", "app/dependabot"]'), github.actor)
+# jobs:
+#   auto-merge:
+#     runs-on: ubuntu-latest
+#     if: contains(fromJSON('["dependabot[bot]", "app/dependabot"]'), github.actor)
     
-    steps:
-      - name: Determine action
-        id: determine
-        run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github.event.pull_request.body }}"
+#     steps:
+#       - name: Determine action
+#         id: determine
+#         run: |
+#           PR_TITLE="${{ github.event.pull_request.title }}"
+#           PR_BODY="${{ github.event.pull_request.body }}"
           
-          echo "📋 Analyzing: $PR_TITLE"
+#           echo "📋 Analyzing: $PR_TITLE"
           
-          # Check if patch update (x.y.z -> x.y.z+1)
-          IS_PATCH=false
-          if echo "$PR_TITLE" | grep -qE "from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+"; then
-            FROM_VER=$(echo "$PR_TITLE" | grep -oE "from [0-9]+\.[0-9]+\.[0-9]+" | cut -d' ' -f2)
-            TO_VER=$(echo "$PR_TITLE" | grep -oE "to [0-9]+\.[0-9]+\.[0-9]+" | cut -d' ' -f2)
+#           # Check if patch update (x.y.z -> x.y.z+1)
+#           IS_PATCH=false
+#           if echo "$PR_TITLE" | grep -qE "from [0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+"; then
+#             FROM_VER=$(echo "$PR_TITLE" | grep -oE "from [0-9]+\.[0-9]+\.[0-9]+" | cut -d' ' -f2)
+#             TO_VER=$(echo "$PR_TITLE" | grep -oE "to [0-9]+\.[0-9]+\.[0-9]+" | cut -d' ' -f2)
             
-            FROM_MAJ_MIN=$(echo "$FROM_VER" | cut -d. -f1,2)
-            TO_MAJ_MIN=$(echo "$TO_VER" | cut -d. -f1,2)
+#             FROM_MAJ_MIN=$(echo "$FROM_VER" | cut -d. -f1,2)
+#             TO_MAJ_MIN=$(echo "$TO_VER" | cut -d. -f1,2)
             
-            if [[ "$FROM_MAJ_MIN" == "$TO_MAJ_MIN" ]]; then
-              IS_PATCH=true
-              echo "✅ Patch update: $FROM_VER -> $TO_VER"
-            else
-              echo "❌ Major/minor update: $FROM_VER -> $TO_VER"
-            fi
-          fi
+#             if [[ "$FROM_MAJ_MIN" == "$TO_MAJ_MIN" ]]; then
+#               IS_PATCH=true
+#               echo "✅ Patch update: $FROM_VER -> $TO_VER"
+#             else
+#               echo "❌ Major/minor update: $FROM_VER -> $TO_VER"
+#             fi
+#           fi
           
-          # Check if security update
-          IS_SECURITY=false
-          if echo "$PR_BODY" | grep -qi "security\|vulnerability\|CVE-\|GHSA-"; then
-            IS_SECURITY=true
-            echo "🔒 Security update detected"
-          fi
+#           # Check if security update
+#           IS_SECURITY=false
+#           if echo "$PR_BODY" | grep -qi "security\|vulnerability\|CVE-\|GHSA-"; then
+#             IS_SECURITY=true
+#             echo "🔒 Security update detected"
+#           fi
           
-          # Check if trusted package (simple list)
-          IS_TRUSTED=false
-          PACKAGE=$(echo "$PR_TITLE" | grep -oE "(^Bump |: bump )([^[:space:]]+)" | sed 's/.*bump //' | head -1)
+#           # Check if trusted package (simple list)
+#           IS_TRUSTED=false
+#           PACKAGE=$(echo "$PR_TITLE" | grep -oE "(^Bump |: bump )([^[:space:]]+)" | sed 's/.*bump //' | head -1)
           
-          if [[ "$PACKAGE" =~ ^@(types|azure|microsoft)/ ]] || [[ "$PACKAGE" =~ ^(typescript|eslint|prettier|react|express|mongodb|axios|date-fns|winston|helmet|cors|rimraf|astro)$ ]]; then
-            IS_TRUSTED=true
-            echo "✅ Trusted package: $PACKAGE"
-          else
-            echo "⚠️ Untrusted package: $PACKAGE"
-          fi
+#           if [[ "$PACKAGE" =~ ^@(types|azure|microsoft)/ ]] || [[ "$PACKAGE" =~ ^(typescript|eslint|prettier|react|express|mongodb|axios|date-fns|winston|helmet|cors|rimraf|astro)$ ]]; then
+#             IS_TRUSTED=true
+#             echo "✅ Trusted package: $PACKAGE"
+#           else
+#             echo "⚠️ Untrusted package: $PACKAGE"
+#           fi
           
-          # Determine action
-          if [[ "$IS_PATCH" == "true" && "$IS_TRUSTED" == "true" ]] || [[ "$IS_SECURITY" == "true" ]]; then
-            echo "ACTION=auto-merge" >> $GITHUB_OUTPUT
-            echo "🚀 Will auto-merge"
-          else
-            echo "ACTION=manual-review" >> $GITHUB_OUTPUT
-            echo "👀 Requires manual review"
-          fi
+#           # Determine action
+#           if [[ "$IS_PATCH" == "true" && "$IS_TRUSTED" == "true" ]] || [[ "$IS_SECURITY" == "true" ]]; then
+#             echo "ACTION=auto-merge" >> $GITHUB_OUTPUT
+#             echo "🚀 Will auto-merge"
+#           else
+#             echo "ACTION=manual-review" >> $GITHUB_OUTPUT
+#             echo "👀 Requires manual review"
+#           fi
           
-          echo "PACKAGE=$PACKAGE" >> $GITHUB_OUTPUT
-          echo "IS_PATCH=$IS_PATCH" >> $GITHUB_OUTPUT
-          echo "IS_SECURITY=$IS_SECURITY" >> $GITHUB_OUTPUT
-          echo "IS_TRUSTED=$IS_TRUSTED" >> $GITHUB_OUTPUT
+#           echo "PACKAGE=$PACKAGE" >> $GITHUB_OUTPUT
+#           echo "IS_PATCH=$IS_PATCH" >> $GITHUB_OUTPUT
+#           echo "IS_SECURITY=$IS_SECURITY" >> $GITHUB_OUTPUT
+#           echo "IS_TRUSTED=$IS_TRUSTED" >> $GITHUB_OUTPUT
 
-      - name: Auto-merge
-        if: steps.determine.outputs.ACTION == 'auto-merge'
-        run: |
-          echo "🚀 Auto-merging PR #${{ github.event.pull_request.number }}"
-          gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Auto-merge
+#         if: steps.determine.outputs.ACTION == 'auto-merge'
+#         run: |
+#           echo "🚀 Auto-merging PR #${{ github.event.pull_request.number }}"
+#           gh pr merge ${{ github.event.pull_request.number }} --auto --squash --delete-branch
+#         env:
+#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add review comment
-        if: steps.determine.outputs.ACTION == 'manual-review'
-        run: |
-          COMMENT="📋 **Manual Review Required**
+#       - name: Add review comment
+#         if: steps.determine.outputs.ACTION == 'manual-review'
+#         run: |
+#           COMMENT="📋 **Manual Review Required**
 
-          This dependency update needs manual review:
-          - Package: \`${{ steps.determine.outputs.PACKAGE }}\`
-          - Patch update: ${{ steps.determine.outputs.IS_PATCH }}
-          - Trusted package: ${{ steps.determine.outputs.IS_TRUSTED }}
-          - Security update: ${{ steps.determine.outputs.IS_SECURITY }}
+#           This dependency update needs manual review:
+#           - Package: \`${{ steps.determine.outputs.PACKAGE }}\`
+#           - Patch update: ${{ steps.determine.outputs.IS_PATCH }}
+#           - Trusted package: ${{ steps.determine.outputs.IS_TRUSTED }}
+#           - Security update: ${{ steps.determine.outputs.IS_SECURITY }}
           
-          To auto-merge: \`@dependabot squash and merge\`"
+#           To auto-merge: \`@dependabot squash and merge\`"
           
-          gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+#         env:
+#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Add labels
-        run: |
-          if [[ "${{ steps.determine.outputs.ACTION }}" == "auto-merge" ]]; then
-            gh pr edit ${{ github.event.pull_request.number }} --add-label "dependencies,auto-merge"
-          else
-            gh pr edit ${{ github.event.pull_request.number }} --add-label "dependencies,manual-review"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Add labels
+#         run: |
+#           if [[ "${{ steps.determine.outputs.ACTION }}" == "auto-merge" ]]; then
+#             gh pr edit ${{ github.event.pull_request.number }} --add-label "dependencies,auto-merge"
+#           else
+#             gh pr edit ${{ github.event.pull_request.number }} --add-label "dependencies,manual-review"
+#           fi
+#         env:
+#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
