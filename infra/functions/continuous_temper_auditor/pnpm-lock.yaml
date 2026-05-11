@@ -23,8 +23,8 @@ importers:
         specifier: ^1.14.3
         version: 1.14.3
       '@hyperledger/fabric-gateway':
-        specifier: ^1.10.1
-        version: 1.10.1
+        specifier: ^1.11.0
+        version: 1.11.0
       mongodb:
         specifier: ^6.21.0
         version: 6.21.0
@@ -64,8 +64,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hyperledger/fabric-gateway@1.10.1':
-    resolution: {integrity: sha512-nIw4oUUhHtrgxH5UAu53Dy778+xf2eM7SwvBXQlJhx9vJQ7eYX4MF0BuGGDxaYsc8gNZddddj8n99ex3Z8+exw==}
+  '@hyperledger/fabric-gateway@1.11.0':
+    resolution: {integrity: sha512-XxO4fnnOwb2LDiuzPivdRr6C0fp3bIW55aZi3AjvNT37tchUA1+I8md8hp4lMo1mHcGyX1VAMOEOz8lgguZ4Hg==}
     engines: {node: '>=20.9.0'}
 
   '@hyperledger/fabric-protos@0.3.7':
@@ -438,7 +438,7 @@ snapshots:
       protobufjs: 7.5.5
       yargs: 17.7.2
 
-  '@hyperledger/fabric-gateway@1.10.1':
+  '@hyperledger/fabric-gateway@1.11.0':
     dependencies:
       '@grpc/grpc-js': 1.14.3
       '@hyperledger/fabric-protos': 0.3.7
