@@ -17,8 +17,8 @@ importers:
   .:
     dependencies:
       '@azure/functions':
-        specifier: 4.11.0
-        version: 4.11.0
+        specifier: 4.16.0
+        version: 4.16.0
       '@grpc/grpc-js':
         specifier: ^1.14.3
         version: 1.14.3
@@ -44,12 +44,12 @@ importers:
 
 packages:
 
-  '@azure/functions-extensions-base@0.2.0':
-    resolution: {integrity: sha512-ncCkHBNQYJa93dBIh+toH0v1iSgCzSo9tr94s6SMBe7DPWREkaWh8cq33A5P4rPSFX1g5W+3SPvIzDr/6/VOWQ==}
+  '@azure/functions-extensions-base@0.3.0':
+    resolution: {integrity: sha512-Cux0hLu5ZXlC/Kb+yvJVhRLIdkfFwui2HeT5oGZL00r/GCUUkhGTzRfZUjRN4Bq729mPv3okPucz2z7SMQLStA==}
     engines: {node: '>=18.0'}
 
-  '@azure/functions@4.11.0':
-    resolution: {integrity: sha512-J0We2gav3YZFLO9pJlXDKUSOT0r/DzkUaJTaruhm8pwoSMbi4zjsS5N6fARrTel+IBCm77hlD0IgZSKSWvVpUw==}
+  '@azure/functions@4.16.0':
+    resolution: {integrity: sha512-cwLld7tRi1VLYNdm1evgS9n8ABP/e+0uLjRO++OjM/kigERG80OfFRRMbag/vpXUzCtda83lDiuCvcwPlxgwZw==}
     engines: {node: '>=20.0'}
 
   '@grpc/grpc-js@1.14.3':
@@ -232,9 +232,6 @@ packages:
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
 
-  long@4.0.0:
-    resolution: {integrity: sha512-XsP+KhQif4bjX1kbuSiySJFNAehNxgLb6hPRGJ9QsUr8ajHkuXGdrHmFUTUUXhDwVX2R5bY4JNZEwbUiMhV+MA==}
-
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
 
@@ -350,13 +347,12 @@ packages:
 
 snapshots:
 
-  '@azure/functions-extensions-base@0.2.0': {}
+  '@azure/functions-extensions-base@0.3.0': {}
 
-  '@azure/functions@4.11.0':
+  '@azure/functions@4.16.0':
     dependencies:
-      '@azure/functions-extensions-base': 0.2.0
+      '@azure/functions-extensions-base': 0.3.0
       cookie: 0.7.2
-      long: 4.0.0
 
   '@grpc/grpc-js@1.14.3':
     dependencies:
@@ -536,8 +532,6 @@ snapshots:
   is-fullwidth-code-point@3.0.0: {}
 
   lodash.camelcase@4.3.0: {}
-
-  long@4.0.0: {}
 
   long@5.3.2: {}
 
