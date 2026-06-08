@@ -23,7 +23,7 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "daisyui": "^5.5.19",
+    "daisyui": "^5.5.23",
     "dotenv": "^17.4.2"
   }
 }
